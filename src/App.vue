@@ -89,13 +89,10 @@ const analyticsSummary = computed(() => {
 const analyticsRows = computed(() =>
   analyticsProducts.value.map((item) => {
     const history = item.history ?? []
-    const prices = history.map((point) => point.price)
-    const maxPrice = prices.length ? Math.max(...prices) : item.current_price
 
     return {
       ...item,
       historyCount: history.length,
-      maxPrice,
     }
   }),
 )
@@ -178,6 +175,18 @@ function formatRelativeTime(value) {
   }
   const diffDays = Math.round(diffHours / 24)
   return `${diffDays} дн назад`
+}
+
+function getTrackedChange(item) {
+  return (item.current_price ?? 0) - (item.initial_price ?? item.current_price ?? 0)
+}
+
+function getTrackedChangePercent(item) {
+  const base = item.initial_price ?? 0
+  if (!base) {
+    return '0.00'
+  }
+  return ((Math.abs(getTrackedChange(item)) / base) * 100).toFixed(2)
 }
 
 function buildThumb(name) {
@@ -608,15 +617,13 @@ onBeforeUnmount(() => {
                 <p>{{ formatShortDate(item.min_price_recorded_at) }}</p>
               </div>
               <div>
-                <strong class="price-change mono" :class="{ down: item.last_price_change < 0 }">
-                  {{ item.last_price_change < 0 ? '↓' : item.last_price_change > 0 ? '↑' : '•' }}
-                  {{ formatPrice(Math.abs(item.last_price_change || 0)) }}
+                <strong class="price-change mono" :class="{ down: getTrackedChange(item) < 0 }">
+                  {{ getTrackedChange(item) < 0 ? '↓' : getTrackedChange(item) > 0 ? '↑' : '•' }}
+                  {{ formatPrice(Math.abs(getTrackedChange(item))) }}
                 </strong>
                 <p>
                   {{
-                    item.current_price
-                      ? `(${((Math.abs(item.last_price_change || 0) / item.current_price) * 100).toFixed(2)}%)`
-                      : '(0.00%)'
+                    `(${getTrackedChangePercent(item)}%)`
                   }}
                 </p>
               </div>
@@ -677,22 +684,22 @@ onBeforeUnmount(() => {
 
               <div class="analytics-row__stats">
                 <div>
-                  <span>Текущая</span>
+                  <span>При добавлении</span>
+                  <strong>{{ formatPrice(item.initial_price) }}</strong>
+                </div>
+                <div>
+                  <span>Текущая цена</span>
                   <strong>{{ formatPrice(item.current_price) }}</strong>
                 </div>
                 <div>
-                  <span>Минимум</span>
-                  <strong class="price-min">{{ formatPrice(item.min_price) }}</strong>
+                  <span>Мин/Макс</span>
+                  <strong class="price-min">{{ formatPrice(item.min_price) }} / {{ formatPrice(item.max_price) }}</strong>
                 </div>
                 <div>
-                  <span>Максимум</span>
-                  <strong>{{ formatPrice(item.maxPrice) }}</strong>
-                </div>
-                <div>
-                  <span>Последнее изменение</span>
-                  <strong :class="['price-change', { down: item.last_price_change < 0 }]">
-                    {{ item.last_price_change < 0 ? '↓' : item.last_price_change > 0 ? '↑' : '•' }}
-                    {{ formatPrice(Math.abs(item.last_price_change || 0)) }}
+                  <span>Изменение</span>
+                  <strong :class="['price-change', { down: getTrackedChange(item) < 0 }]">
+                    {{ getTrackedChange(item) < 0 ? '↓' : getTrackedChange(item) > 0 ? '↑' : '•' }}
+                    {{ formatPrice(Math.abs(getTrackedChange(item))) }}
                   </strong>
                 </div>
               </div>
