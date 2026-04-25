@@ -88,14 +88,10 @@ const analyticsSummary = computed(() => {
 const analyticsRows = computed(() =>
   analyticsProducts.value.map((item) => {
     const history = item.history ?? []
-    const firstPoint = history[0]
-    const lastPoint = history[history.length - 1]
-    const fullChange = firstPoint ? item.current_price - firstPoint.price : 0
 
     return {
       ...item,
       historyCount: history.length,
-      fullChange,
       sparkline: buildSparkline(history),
     }
   }),
@@ -702,10 +698,10 @@ onBeforeUnmount(() => {
                   <strong class="price-min">{{ formatPrice(item.min_price) }}</strong>
                 </div>
                 <div>
-                  <span>За период</span>
-                  <strong :class="['price-change', { down: item.fullChange < 0 }]">
-                    {{ item.fullChange < 0 ? '↓' : item.fullChange > 0 ? '↑' : '•' }}
-                    {{ formatPrice(Math.abs(item.fullChange)) }}
+                  <span>Последнее изменение</span>
+                  <strong :class="['price-change', { down: item.last_price_change < 0 }]">
+                    {{ item.last_price_change < 0 ? '↓' : item.last_price_change > 0 ? '↑' : '•' }}
+                    {{ formatPrice(Math.abs(item.last_price_change || 0)) }}
                   </strong>
                 </div>
               </div>
