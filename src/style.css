@@ -496,6 +496,12 @@ a {
   font-size: 1.05rem;
 }
 
+.products-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .toolbar {
   display: flex;
   gap: 10px;
@@ -522,7 +528,7 @@ a {
 .table-head,
 .table-row {
   display: grid;
-  grid-template-columns: minmax(300px, 1.7fr) repeat(4, minmax(120px, 1fr));
+  grid-template-columns: minmax(300px, 1.7fr) repeat(3, minmax(120px, 1fr));
   gap: 18px;
   align-items: center;
 }
@@ -646,8 +652,7 @@ a {
   color: #48e27c;
 }
 
-.table-row p,
-.updated {
+.table-row p {
   color: var(--muted);
   font-size: 0.88rem;
 }

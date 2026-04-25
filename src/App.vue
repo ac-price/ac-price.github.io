@@ -52,12 +52,12 @@ const priceDropsToday = computed(
     products.value.filter((item) => {
       const checked = new Date(item.last_checked_at)
       const now = new Date()
-      return item.last_price_change < 0 && checked.toDateString() === now.toDateString()
+      return getTrackedChange(item) < 0 && checked.toDateString() === now.toDateString()
     }).length,
 )
-const sentNotifications = computed(() => products.value.filter((item) => item.last_price_change < 0).length)
+const sentNotifications = computed(() => products.value.filter((item) => getTrackedChange(item) < 0).length)
 const totalSaved = computed(() =>
-  products.value.reduce((sum, item) => sum + Math.max(item.current_price - item.min_price, 0), 0),
+  products.value.reduce((sum, item) => sum + Math.max((item.initial_price ?? item.current_price) - item.current_price, 0), 0),
 )
 
 const stats = computed(() => [
@@ -67,14 +67,32 @@ const stats = computed(() => [
   { icon: 'coin', value: formatPrice(totalSaved.value), label: 'Потенциально сэкономлено', tone: 'gold' },
 ])
 
+const latestCheckedAt = computed(() => {
+  if (!products.value.length) {
+    return null
+  }
+  return [...products.value]
+    .map((item) => item.last_checked_at)
+    .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0]
+})
+
+const productsUpdateHint = computed(() => {
+  const schedule =
+    profile.value?.refresh_mode === 'every_5_minutes'
+      ? 'Обновляется каждые 5 минут.'
+      : 'Обновляется ежедневно в 08:00 по Казахстану.'
+  const lastCheck = latestCheckedAt.value ? ` Последняя проверка: ${formatRelativeTime(latestCheckedAt.value)}.` : ''
+  return `${schedule}${lastCheck}`
+})
+
 const analyticsSummary = computed(() => {
   const items = analyticsProducts.value
   const pointsCount = items.reduce((sum, item) => sum + item.history.length, 0)
   const activeDrops = items.filter((item) => item.current_price <= item.min_price).length
   const averageVolatility = items.length
     ? items.reduce((sum, item) => {
-        const base = item.min_price || item.current_price || 1
-        return sum + ((Math.abs(item.current_price - item.min_price) / base) * 100)
+        const base = item.initial_price || item.current_price || 1
+        return sum + ((Math.abs(getTrackedChange(item)) / base) * 100)
       }, 0) / items.length
     : 0
 
@@ -82,19 +100,15 @@ const analyticsSummary = computed(() => {
     { title: 'Товаров в аналитике', value: String(items.length) },
     { title: 'Точек истории', value: String(pointsCount) },
     { title: 'На минимуме сейчас', value: String(activeDrops) },
-    { title: 'Средняя волатильность', value: `${averageVolatility.toFixed(1)}%` },
+    { title: 'Среднее изменение', value: `${averageVolatility.toFixed(1)}%` },
   ]
 })
 
 const analyticsRows = computed(() =>
-  analyticsProducts.value.map((item) => {
-    const history = item.history ?? []
-
-    return {
-      ...item,
-      historyCount: history.length,
-    }
-  }),
+  analyticsProducts.value.map((item) => ({
+    ...item,
+    historyCount: item.history?.length ?? 0,
+  })),
 )
 
 const navItems = [
@@ -556,9 +570,7 @@ onBeforeUnmount(() => {
         <header class="dashboard-header">
           <div>
             <h1 class="dashboard-title">Мои товары</h1>
-            <p class="dashboard-subtitle">
-              Отслеживайте цены на товары и получайте уведомления о снижении цен
-            </p>
+            <p class="dashboard-subtitle">Отслеживайте цены на товары и получайте уведомления о снижении цен</p>
           </div>
           <button type="button" class="add-button" @click="openAddModal">Добавить товар</button>
         </header>
@@ -582,6 +594,7 @@ onBeforeUnmount(() => {
           <div class="products-head">
             <div>
               <h2>Отслеживаемые товары</h2>
+              <p class="products-note">{{ productsUpdateHint }}</p>
             </div>
             <div class="toolbar">
               <div class="search-box">Поиск по товарам...</div>
@@ -594,7 +607,6 @@ onBeforeUnmount(() => {
             <span>Текущая цена</span>
             <span>Минимальная цена</span>
             <span>Изменение</span>
-            <span>Последнее обновление</span>
           </div>
 
           <div class="table-scroll">
@@ -630,13 +642,8 @@ onBeforeUnmount(() => {
                   {{ getTrackedChange(item) < 0 ? '↓' : getTrackedChange(item) > 0 ? '↑' : '•' }}
                   {{ formatPrice(Math.abs(getTrackedChange(item))) }}
                 </strong>
-                <p>
-                  {{
-                    `(${getTrackedChangePercent(item)}%)`
-                  }}
-                </p>
+                <p>({{ getTrackedChangePercent(item) }}%)</p>
               </div>
-              <span class="updated">{{ formatRelativeTime(item.last_checked_at) }}</span>
             </article>
           </div>
         </section>
@@ -646,9 +653,7 @@ onBeforeUnmount(() => {
         <header class="dashboard-header">
           <div>
             <h1 class="dashboard-title">Аналитика</h1>
-            <p class="dashboard-subtitle">
-              Динамика цен, глубина истории и состояние каждого отслеживаемого товара
-            </p>
+            <p class="dashboard-subtitle">Динамика цен, глубина истории и состояние каждого отслеживаемого товара</p>
           </div>
         </header>
 
