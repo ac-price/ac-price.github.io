@@ -1,71 +1,217 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
+const STORAGE_KEY = 'ac_price_auth_session_v2'
+const LEGACY_STORAGE_KEYS = ['ac_price_auth_token', 'ac_price_auth_session']
 
 const botName = import.meta.env.VITE_TELEGRAM_BOT_NAME?.trim() ?? ''
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim() ?? 'https://api.example.com'
 const query = new URLSearchParams(window.location.search)
-const authStatus = query.get('status') ?? ''
-const authReason = query.get('reason') ?? ''
-const authToken = query.get('token') ?? ''
-const authTelegramId = query.get('telegram_id') ?? ''
 
-const telegramWidget = ref(null)
+const widgetContainer = ref(null)
+const authMessage = ref('')
+const authError = ref('')
+const session = ref(null)
+const profileMenuOpen = ref(false)
+const products = ref([])
+const isProductsLoading = ref(false)
+const productsError = ref('')
+const isAddModalOpen = ref(false)
+const addProductUrl = ref('')
+const isSubmittingProduct = ref(false)
+const addProductError = ref('')
+
 let telegramScript = null
 
 const hasTelegramWidget = computed(() => Boolean(botName))
-const telegramBotLink = computed(() => (botName ? `https://t.me/${botName}` : 'https://telegram.org/'))
+const isAuthenticated = computed(() => Boolean(session.value))
 
-const stats = [
-  { value: '24/7', label: 'Слежение за ценами на Kaspi', tone: 'green' },
-  { value: '< 1 мин', label: 'Доставка уведомлений в Telegram', tone: 'blue' },
-  { value: 'AI+', label: 'Подсказки по выгодным моментам покупки', tone: 'gold' },
-]
+const trackedCount = computed(() => products.value.length)
+const priceDropsToday = computed(
+  () =>
+    products.value.filter((item) => {
+      const checked = new Date(item.last_checked_at)
+      const now = new Date()
+      return item.last_price_change < 0 && checked.toDateString() === now.toDateString()
+    }).length,
+)
+const sentNotifications = computed(() => products.value.filter((item) => item.last_price_change < 0).length)
+const totalSaved = computed(() =>
+  products.value.reduce((sum, item) => sum + Math.max(item.current_price - item.min_price, 0), 0),
+)
+const stats = computed(() => [
+  { icon: 'bag', value: String(trackedCount.value), label: 'Товаров отслеживается', tone: 'green' },
+  { icon: 'trend', value: String(priceDropsToday.value), label: 'Снижений сегодня', tone: 'violet' },
+  { icon: 'bell', value: String(sentNotifications.value), label: 'Снижений в истории', tone: 'blue' },
+  { icon: 'coin', value: formatPrice(totalSaved.value), label: 'Потенциально сэкономлено', tone: 'gold' },
+])
 
-const benefits = [
-  {
-    title: 'Авторизация без пароля',
-    text: 'Вход по Telegram за один клик. Пользователь подтверждает себя в знакомом интерфейсе, без регистраций и форм.',
-  },
-  {
-    title: 'Удобно с телефона',
-    text: 'Сайт сразу готов для мобильного сценария: открыть ссылку, войти через Telegram и перейти к отслеживанию товара.',
-  },
-  {
-    title: 'Фронт и бэк разделены',
-    text: 'Публичная часть живет на GitHub Pages, а Python-бэк на сервере проверяет цены и отправляет уведомления.',
-  },
-]
+function decodeJwtPayload(token) {
+  try {
+    const payload = token.split('.')[1]
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+    return JSON.parse(window.atob(padded))
+  } catch {
+    return null
+  }
+}
 
-const signals = [
-  {
-    name: 'Apple iPhone 15 Pro 128GB',
-    currentPrice: '699 990 ₸',
-    minPrice: '639 990 ₸',
-    change: '↓ 10 000 ₸',
-    updatedAt: 'только что',
-  },
-  {
-    name: 'ASUS ROG Zephyrus G14',
-    currentPrice: '899 990 ₸',
-    minPrice: '849 990 ₸',
-    change: '↓ 15 000 ₸',
-    updatedAt: '2 мин назад',
-  },
-  {
-    name: 'Sony WH-1000XM5',
-    currentPrice: '149 990 ₸',
-    minPrice: '129 990 ₸',
-    change: '↓ 5 000 ₸',
-    updatedAt: '6 мин назад',
-  },
-]
+function readStoredSession() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
 
-onMounted(() => {
-  if (authToken) {
-    window.localStorage.setItem('ac_price_auth_token', authToken)
+function persistSession(token) {
+  const payload = decodeJwtPayload(token)
+  if (!payload) {
+    return
   }
 
-  if (!hasTelegramWidget.value || !telegramWidget.value) {
+  const nextSession = {
+    token,
+    username: payload.username || '',
+    telegramId: payload.telegram_id || '',
+    userId: payload.sub || '',
+  }
+
+  session.value = nextSession
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSession))
+}
+
+function getAuthHeaders() {
+  if (!session.value?.token) {
+    return {}
+  }
+  return {
+    Authorization: `Bearer ${session.value.token}`,
+    'Content-Type': 'application/json',
+  }
+}
+
+function formatPrice(value) {
+  return `${new Intl.NumberFormat('ru-RU').format(value)} ₸`
+}
+
+function formatShortDate(value) {
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(value))
+}
+
+function formatRelativeTime(value) {
+  const date = new Date(value)
+  const diffMinutes = Math.max(1, Math.round((Date.now() - date.getTime()) / 60000))
+  if (diffMinutes < 60) {
+    return `${diffMinutes} мин назад`
+  }
+  const diffHours = Math.round(diffMinutes / 60)
+  if (diffHours < 24) {
+    return `${diffHours} ч назад`
+  }
+  const diffDays = Math.round(diffHours / 24)
+  return `${diffDays} дн назад`
+}
+
+function buildThumb(name) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0] || '')
+    .join('')
+    .toUpperCase()
+}
+
+async function loadProducts() {
+  if (!session.value?.token) {
+    products.value = []
+    return
+  }
+
+  isProductsLoading.value = true
+  productsError.value = ''
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/v1/products`, {
+      headers: getAuthHeaders(),
+    })
+    const payload = await response.json()
+    if (!response.ok) {
+      throw new Error(payload.detail || 'Не удалось загрузить товары.')
+    }
+    products.value = payload.items
+  } catch (error) {
+    productsError.value = error.message || 'Не удалось загрузить товары.'
+  } finally {
+    isProductsLoading.value = false
+  }
+}
+
+function openAddModal() {
+  addProductUrl.value = ''
+  addProductError.value = ''
+  isAddModalOpen.value = true
+}
+
+function closeAddModal() {
+  isAddModalOpen.value = false
+  addProductUrl.value = ''
+  addProductError.value = ''
+}
+
+async function submitProduct() {
+  if (!addProductUrl.value.trim()) {
+    addProductError.value = 'Вставьте ссылку на товар.'
+    return
+  }
+
+  isSubmittingProduct.value = true
+  addProductError.value = ''
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/v1/products`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ url: addProductUrl.value.trim() }),
+    })
+    const payload = await response.json()
+    if (!response.ok) {
+      throw new Error(payload.detail || 'Не удалось добавить товар.')
+    }
+
+    const existingIndex = products.value.findIndex((item) => item.id === payload.id)
+    if (existingIndex >= 0) {
+      products.value.splice(existingIndex, 1, payload)
+    } else {
+      products.value.unshift(payload)
+    }
+    closeAddModal()
+  } catch (error) {
+    addProductError.value = error.message || 'Не удалось добавить товар.'
+  } finally {
+    isSubmittingProduct.value = false
+  }
+}
+
+function cleanupTelegramWidget() {
+  if (telegramScript?.parentNode) {
+    telegramScript.parentNode.removeChild(telegramScript)
+  }
+  telegramScript = null
+
+  if (widgetContainer.value) {
+    widgetContainer.value.innerHTML = ''
+  }
+}
+
+function renderTelegramWidget() {
+  cleanupTelegramWidget()
+
+  if (!hasTelegramWidget.value || !widgetContainer.value || isAuthenticated.value) {
     return
   }
 
@@ -74,197 +220,262 @@ onMounted(() => {
   telegramScript.src = 'https://telegram.org/js/telegram-widget.js?22'
   telegramScript.setAttribute('data-telegram-login', botName)
   telegramScript.setAttribute('data-size', 'large')
-  telegramScript.setAttribute('data-radius', '14')
+  telegramScript.setAttribute('data-radius', '16')
   telegramScript.setAttribute('data-request-access', 'write')
   telegramScript.setAttribute('data-userpic', 'false')
   telegramScript.setAttribute('data-lang', 'ru')
   telegramScript.setAttribute('data-auth-url', `${apiBaseUrl}/auth/telegram/callback`)
 
-  telegramWidget.value.appendChild(telegramScript)
+  widgetContainer.value.appendChild(telegramScript)
+}
+
+function clearUrlState() {
+  if (window.location.search) {
+    window.history.replaceState({}, document.title, window.location.pathname)
+  }
+}
+
+function logout() {
+  window.localStorage.removeItem(STORAGE_KEY)
+  session.value = null
+  profileMenuOpen.value = false
+  authMessage.value = ''
+  authError.value = ''
+  products.value = []
+  productsError.value = ''
+  clearUrlState()
+}
+
+function toggleProfileMenu() {
+  profileMenuOpen.value = !profileMenuOpen.value
+}
+
+onMounted(async () => {
+  for (const key of LEGACY_STORAGE_KEYS) {
+    window.localStorage.removeItem(key)
+  }
+
+  const status = query.get('status') ?? ''
+  const token = query.get('token') ?? ''
+  const reason = query.get('reason') ?? ''
+
+  if (status === 'success' && token) {
+    persistSession(token)
+    authMessage.value = 'Авторизация выполнена.'
+    authError.value = ''
+    clearUrlState()
+  } else if (status === 'error') {
+    authError.value = reason || 'Не удалось войти через Telegram.'
+    window.localStorage.removeItem(STORAGE_KEY)
+    session.value = null
+    clearUrlState()
+  } else {
+    session.value = readStoredSession()
+  }
+
+  await nextTick()
+  renderTelegramWidget()
+  if (session.value?.token) {
+    await loadProducts()
+  }
+})
+
+watch(isAuthenticated, async () => {
+  await nextTick()
+  renderTelegramWidget()
+  if (isAuthenticated.value) {
+    await loadProducts()
+  }
 })
 
 onBeforeUnmount(() => {
-  if (telegramScript?.parentNode) {
-    telegramScript.parentNode.removeChild(telegramScript)
-  }
+  cleanupTelegramWidget()
 })
 </script>
 
 <template>
-  <div class="page-shell">
-    <aside class="left-rail">
-      <div class="brand-card panel">
-        <div class="brand-mark">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 16.5 9 11l3.5 3.5L20 7" />
-            <path d="M15.5 7H20v4.5" />
-          </svg>
+  <main v-if="!isAuthenticated" class="auth-screen">
+    <section class="login-card">
+      <div class="login-badge">
+        <span class="login-badge__dot"></span>
+        <span>AC Price</span>
+      </div>
+
+      <h1>Вход через Telegram</h1>
+      <p class="login-subtitle">Быстрый вход без пароля для доступа к отслеживаемым товарам.</p>
+
+      <div v-if="authError" class="state state-error">{{ authError }}</div>
+      <div v-else-if="authMessage" class="state state-success">{{ authMessage }}</div>
+
+      <div class="login-widget-wrap">
+        <div v-if="hasTelegramWidget" ref="widgetContainer" class="telegram-widget"></div>
+        <a
+          v-else
+          class="fallback-button"
+          :href="botName ? `https://t.me/${botName}` : 'https://telegram.org/'"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Войти через Telegram
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <main v-else class="dashboard">
+    <aside class="sidebar panel">
+      <div>
+        <div class="brand-card">
+          <div class="brand-mark">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 16.5 9 11l3.5 3.5L20 7" />
+              <path d="M15.5 7H20v4.5" />
+            </svg>
+          </div>
+          <div>
+            <p class="brand-title">AC Price</p>
+            <p class="brand-subtitle">Следим за ценами на Kaspi</p>
+          </div>
         </div>
-        <div>
-          <p class="brand-title">AC Price</p>
-          <p class="muted">Следим за ценами на Kaspi и сразу пишем в Telegram.</p>
+
+        <nav class="sidebar-nav">
+          <a href="#" class="nav-item active">Главная</a>
+          <a href="#" class="nav-item">Аналитика</a>
+          <a href="#" class="nav-item">Уведомления</a>
+          <a href="#" class="nav-item">Настройки</a>
+        </nav>
+
+        <div class="premium-card">
+          <p class="premium-card__title">Премиум</p>
+          <p class="premium-card__text">
+            Больше отслеживаний, расширенная аналитика и приоритетные уведомления
+          </p>
+          <button type="button" class="premium-card__button">Узнать больше</button>
         </div>
       </div>
 
-      <nav class="nav-card panel">
-        <a class="nav-link active" href="#hero">Вход</a>
-        <a class="nav-link" href="#benefits">Преимущества</a>
-        <a class="nav-link" href="#preview">Как это выглядит</a>
-      </nav>
+      <div class="profile-anchor">
+        <button type="button" class="profile-chip" @click="toggleProfileMenu">
+          <span class="profile-chip__avatar">
+            {{ (session?.username || 'U').slice(0, 2).toUpperCase() }}
+          </span>
+          <span class="profile-chip__info">
+            <strong>{{ session?.username || 'user' }}</strong>
+            <span>Бесплатный план</span>
+          </span>
+          <span class="profile-chip__arrow" :class="{ open: profileMenuOpen }">⌄</span>
+        </button>
 
-      <div class="promo-card panel">
-        <p class="promo-label">Telegram-first</p>
-        <h2>Откройте доступ к отслеживанию за один клик</h2>
-        <p class="muted">
-          Без паролей, без форм, без лишних шагов. Пользователь входит через Telegram и
-          сразу попадает в дашборд.
-        </p>
+        <div v-if="profileMenuOpen" class="profile-menu">
+          <button type="button" class="profile-menu__item" @click="logout">Выйти</button>
+        </div>
       </div>
     </aside>
 
-    <main class="content">
-      <section v-if="authStatus" class="auth-result panel" :class="authStatus === 'success' ? 'auth-result--success' : 'auth-result--error'">
-        <strong>
-          {{ authStatus === 'success' ? 'Telegram authorization completed.' : 'Telegram authorization failed.' }}
-        </strong>
-        <span v-if="authStatus === 'success'">
-          Token saved to `localStorage` as `ac_price_auth_token`.
-          <template v-if="authTelegramId"> Telegram ID: {{ authTelegramId }}.</template>
-        </span>
-        <span v-else>{{ authReason || 'Check bot token, domain and callback settings.' }}</span>
-      </section>
-
-      <section id="hero" class="hero-grid">
-        <div class="hero-copy">
-          <span class="eyebrow">Первая страница для неавторизованных</span>
-          <h1>Отслеживайте цены на Kaspi и входите через Telegram.</h1>
-          <p class="hero-text">
-            AC Price помогает не пропустить новые минимальные цены, хранит историю
-            изменений и отправляет уведомления прямо в ваш Telegram.
+    <section class="dashboard-main">
+      <header class="dashboard-header">
+        <div>
+          <h1 class="dashboard-title">Мои товары</h1>
+          <p class="dashboard-subtitle">
+            Отслеживайте цены на товары и получайте уведомления о снижении цен
           </p>
-
-          <div class="stats-grid">
-            <article
-              v-for="item in stats"
-              :key="item.label"
-              class="stat-card panel"
-              :class="`tone-${item.tone}`"
-            >
-              <strong>{{ item.value }}</strong>
-              <span>{{ item.label }}</span>
-            </article>
-          </div>
         </div>
+        <button type="button" class="add-button" @click="openAddModal">Добавить товар</button>
+      </header>
 
-        <div class="auth-card panel">
-          <div class="auth-card__header">
-            <span class="status-dot"></span>
-            <span>Вход в систему</span>
+      <section class="stats-bar panel">
+        <article v-for="item in stats" :key="item.label" class="stat-tile">
+          <div class="stat-tile__icon" :class="`tone-${item.tone}`">
+            <span v-if="item.icon === 'bag'">⌂</span>
+            <span v-else-if="item.icon === 'trend'">⌁</span>
+            <span v-else-if="item.icon === 'bell'">◉</span>
+            <span v-else>◌</span>
           </div>
-
-          <h2>Авторизация через Telegram</h2>
-          <p class="muted">
-            Подтвердите вход через Telegram-бота и получите доступ к отслеживаемым
-            товарам, уведомлениям и аналитике.
-          </p>
-
-          <div v-if="hasTelegramWidget" ref="telegramWidget" class="telegram-widget"></div>
-
-          <a v-else class="telegram-fallback" :href="telegramBotLink" target="_blank" rel="noreferrer">
-            <span class="telegram-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M21.2 4.2 18 19.3c-.2 1-.8 1.2-1.7.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.3-8.4c.4-.4-.1-.6-.6-.3L5.6 12.8.8 11.3c-1-.3-1-.9.2-1.4L19.8 2.7c.9-.3 1.7.2 1.4 1.5Z"
-                />
-              </svg>
-            </span>
-            <span>Войти через Telegram</span>
-          </a>
-
-          <p class="helper-note">
-            <template v-if="hasTelegramWidget">
-              Виджет активен. После подключения Python-бэка укажите корректный
-              `VITE_API_BASE_URL` для валидации Telegram auth.
-            </template>
-            <template v-else>
-              Чтобы включить официальный Telegram Login Widget, добавьте
-              `VITE_TELEGRAM_BOT_NAME` в `.env`.
-            </template>
-          </p>
-
-          <div class="auth-meta">
-            <div>
-              <span>Бот</span>
-              <strong>{{ botName || '@your_auth_bot' }}</strong>
-            </div>
-            <div>
-              <span>Backend</span>
-              <strong>{{ apiBaseUrl }}</strong>
-            </div>
+          <div>
+            <strong>{{ item.value }}</strong>
+            <p>{{ item.label }}</p>
           </div>
-        </div>
-      </section>
-
-      <section id="benefits" class="benefits-section">
-        <article v-for="item in benefits" :key="item.title" class="benefit-card panel">
-          <span class="benefit-index">0{{ benefits.indexOf(item) + 1 }}</span>
-          <h3>{{ item.title }}</h3>
-          <p class="muted">{{ item.text }}</p>
         </article>
       </section>
 
-      <section id="preview" class="preview panel">
-        <div class="preview__header">
+      <section class="products-card panel">
+        <div class="products-head">
           <div>
-            <span class="eyebrow">После входа</span>
-            <h2>Пользователь попадает в панель с товарами и сигналами цены</h2>
+            <h2>Отслеживаемые товары</h2>
           </div>
-          <button type="button" class="ghost-button">Добавить товар</button>
-        </div>
-
-        <div class="preview-stats">
-          <div class="preview-stat">
-            <span>Товаров отслеживается</span>
-            <strong>12</strong>
-          </div>
-          <div class="preview-stat">
-            <span>Снижений сегодня</span>
-            <strong>7</strong>
-          </div>
-          <div class="preview-stat">
-            <span>Уведомлений отправлено</span>
-            <strong>3</strong>
-          </div>
-          <div class="preview-stat">
-            <span>Сэкономлено</span>
-            <strong>84 620 ₸</strong>
+          <div class="toolbar">
+            <div class="search-box">Поиск по товарам...</div>
+            <button type="button" class="sort-button">Сортировка</button>
           </div>
         </div>
 
-        <div class="table-card">
-          <div class="table-head">
-            <span>Товар</span>
-            <span>Текущая цена</span>
-            <span>Минимум</span>
-            <span>Изменение</span>
-            <span>Обновление</span>
-          </div>
+        <div class="table-head">
+          <span>Товар</span>
+          <span>Текущая цена</span>
+          <span>Минимальная цена</span>
+          <span>Изменение</span>
+          <span>Последнее обновление</span>
+        </div>
 
-          <div v-for="item in signals" :key="item.name" class="table-row">
-            <div class="product-cell">
-              <div class="product-thumb">{{ item.name.slice(0, 2) }}</div>
+        <div class="table-scroll">
+          <div v-if="isProductsLoading" class="empty-state">Загрузка товаров...</div>
+          <div v-else-if="productsError" class="empty-state empty-state--error">{{ productsError }}</div>
+          <div v-else-if="!products.length" class="empty-state">
+            Пока нет товаров. Нажмите «Добавить товар» и вставьте ссылку на Kaspi.
+          </div>
+          <article v-for="item in products" :key="item.id" class="table-row">
+            <div class="product-main">
+              <div class="product-thumb">{{ buildThumb(item.product_name) }}</div>
               <div>
-                <strong>{{ item.name }}</strong>
-                <p class="muted">kaspi.kz/shop/...</p>
+                <strong>{{ item.product_name }}</strong>
+                <a :href="item.url" target="_blank" rel="noreferrer">{{ item.url }}</a>
               </div>
             </div>
-            <strong>{{ item.currentPrice }}</strong>
-            <strong class="price-min">{{ item.minPrice }}</strong>
-            <strong class="price-drop">{{ item.change }}</strong>
-            <span>{{ item.updatedAt }}</span>
-          </div>
+            <strong class="mono">{{ formatPrice(item.current_price) }}</strong>
+            <div>
+              <strong class="price-min mono">{{ formatPrice(item.min_price) }}</strong>
+              <p>{{ formatShortDate(item.min_price_recorded_at) }}</p>
+            </div>
+            <div>
+              <strong class="price-change mono" :class="{ down: item.last_price_change < 0 }">
+                {{ item.last_price_change < 0 ? '↓' : item.last_price_change > 0 ? '↑' : '•' }}
+                {{ formatPrice(Math.abs(item.last_price_change || 0)) }}
+              </strong>
+              <p>
+                {{
+                  item.current_price
+                    ? `(${((Math.abs(item.last_price_change || 0) / item.current_price) * 100).toFixed(2)}%)`
+                    : '(0.00%)'
+                }}
+              </p>
+            </div>
+            <span class="updated">{{ formatRelativeTime(item.last_checked_at) }}</span>
+          </article>
         </div>
       </section>
-    </main>
-  </div>
+    </section>
+
+    <div v-if="isAddModalOpen" class="modal-backdrop" @click.self="closeAddModal">
+      <section class="modal-card panel">
+        <div class="modal-card__head">
+          <h3>Добавление товара</h3>
+          <button type="button" class="modal-close" @click="closeAddModal">✕</button>
+        </div>
+
+        <label class="modal-field">
+          <span>Ссылка на товар</span>
+          <input v-model="addProductUrl" type="url" placeholder="https://..." />
+        </label>
+
+        <p v-if="addProductError" class="modal-error">{{ addProductError }}</p>
+
+        <div class="modal-actions">
+          <button type="button" class="sort-button" @click="closeAddModal">Отмена</button>
+          <button type="button" class="add-button" @click="submitProduct">
+            {{ isSubmittingProduct ? 'Добавление...' : 'Добавить' }}
+          </button>
+        </div>
+      </section>
+    </div>
+  </main>
 </template>
