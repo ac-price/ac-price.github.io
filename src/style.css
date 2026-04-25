@@ -529,6 +529,12 @@ a {
   min-width: 0;
 }
 
+.product-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
 .product-thumb {
   width: 52px;
   height: 52px;
@@ -544,15 +550,20 @@ a {
   display: block;
   margin-bottom: 3px;
   font-size: 0.98rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .product-main a {
   color: #59aaff;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
 }
 
 .mono {

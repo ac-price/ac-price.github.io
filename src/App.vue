@@ -128,6 +128,36 @@ function buildThumb(name) {
     .toUpperCase()
 }
 
+function smartShortenProductName(name, maxLength = 54) {
+  const normalized = name.replace(/\s+/g, ' ').trim()
+  if (normalized.length <= maxLength) {
+    return normalized
+  }
+
+  const separators = [' / ', ',', ' - ']
+  for (const separator of separators) {
+    const index = normalized.indexOf(separator)
+    if (index > 18) {
+      const head = normalized.slice(0, index).trim()
+      if (head.length <= maxLength) {
+        return `${head}...`
+      }
+    }
+  }
+
+  const words = normalized.split(' ')
+  let result = ''
+  for (const word of words) {
+    const next = result ? `${result} ${word}` : word
+    if (next.length > maxLength - 3) {
+      break
+    }
+    result = next
+  }
+
+  return result ? `${result}...` : `${normalized.slice(0, maxLength - 3)}...`
+}
+
 async function loadProducts() {
   if (!session.value?.token) {
     products.value = []
@@ -426,8 +456,8 @@ onBeforeUnmount(() => {
           <article v-for="item in products" :key="item.id" class="table-row">
             <div class="product-main">
               <div class="product-thumb">{{ buildThumb(item.product_name) }}</div>
-              <div>
-                <strong>{{ item.product_name }}</strong>
+              <div class="product-copy">
+                <strong :title="item.product_name">{{ smartShortenProductName(item.product_name) }}</strong>
                 <a :href="item.url" target="_blank" rel="noreferrer">{{ item.url }}</a>
               </div>
             </div>
