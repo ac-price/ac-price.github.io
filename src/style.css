@@ -643,6 +643,9 @@ a {
 }
 
 .analytics-lock {
+  grid-row: 2 / -1;
+  min-height: 0;
+  height: 100%;
   min-height: 100%;
   border-radius: 24px;
   display: grid;
