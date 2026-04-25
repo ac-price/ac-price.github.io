@@ -241,16 +241,19 @@ function buildChartOptions(history) {
     },
     stroke: {
       curve: 'straight',
-      width: 3,
+      width: 4,
       lineCap: 'round',
     },
-    colors: ['#57e386'],
+    colors: ['#63f29a'],
     grid: { show: false },
     markers: {
       size: 0,
+      colors: ['#63f29a'],
+      strokeColors: '#07101c',
+      strokeWidth: 3,
       hover: {
-        size: 5,
-        sizeOffset: 2,
+        size: 6,
+        sizeOffset: 3,
       },
     },
     tooltip: {
@@ -277,8 +280,8 @@ function buildChartOptions(history) {
       type: 'gradient',
       gradient: {
         shadeIntensity: 1,
-        opacityFrom: 0.28,
-        opacityTo: 0.02,
+        opacityFrom: 0.42,
+        opacityTo: 0.08,
         stops: [0, 100],
       },
     },

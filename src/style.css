@@ -735,7 +735,8 @@ a {
   height: 78px;
   border-radius: 18px;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.015);
+  background: linear-gradient(180deg, rgba(18, 28, 44, 0.9), rgba(10, 16, 27, 0.95));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   padding: 8px 10px 6px;
 }
 
