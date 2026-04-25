@@ -369,10 +369,39 @@ onBeforeUnmount(() => {
         </div>
 
         <nav class="sidebar-nav">
-          <a href="#" class="nav-item active">Главная</a>
-          <a href="#" class="nav-item">Аналитика</a>
-          <a href="#" class="nav-item">Уведомления</a>
-          <a href="#" class="nav-item">Настройки</a>
+          <a href="#" class="nav-item active">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 10.5 12 4l8 6.5" />
+              <path d="M6.5 9.5V20h11V9.5" />
+              <path d="M10 20v-5.5h4V20" />
+            </svg>
+            <span>Главная</span>
+          </a>
+          <a href="#" class="nav-item">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 18h16" />
+              <path d="M7 15V11" />
+              <path d="M12 15V7" />
+              <path d="M17 15v-4" />
+            </svg>
+            <span>Аналитика</span>
+          </a>
+          <a href="#" class="nav-item">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 20c4.1 0 7-2.2 7-5.5 0-2.2-1.2-3.8-3-4.7V8a4 4 0 1 0-8 0v1.8c-1.8.9-3 2.5-3 4.7C5 17.8 7.9 20 12 20Z" />
+              <path d="M10.5 20a1.5 1.5 0 0 0 3 0" />
+            </svg>
+            <span>Уведомления</span>
+          </a>
+          <a href="#" class="nav-item">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 8.5A3.5 3.5 0 1 0 12 15.5A3.5 3.5 0 1 0 12 8.5z" />
+              <path
+                d="M19.4 15.1a1 1 0 0 0 .2 1.1l.1.1a1 1 0 0 1 0 1.4l-1.3 1.3a1 1 0 0 1-1.4 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a1 1 0 0 1-1 1h-1.8a1 1 0 0 1-1-1v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a1 1 0 0 1-1.4 0L4.3 17.9a1 1 0 0 1 0-1.4l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H3.5a1 1 0 0 1-1-1v-1.8a1 1 0 0 1 1-1h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a1 1 0 0 1 0-1.4l1.3-1.3a1 1 0 0 1 1.4 0l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V4a1 1 0 0 1 1-1h1.8a1 1 0 0 1 1 1v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a1 1 0 0 1 1.4 0l1.3 1.3a1 1 0 0 1 0 1.4l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6h.2a1 1 0 0 1 1 1v1.8a1 1 0 0 1-1 1h-.2a1 1 0 0 0-.9.6Z"
+              />
+            </svg>
+            <span>Настройки</span>
+          </a>
         </nav>
 
         <div class="premium-card">
@@ -393,7 +422,11 @@ onBeforeUnmount(() => {
             <strong>{{ session?.username || 'user' }}</strong>
             <span>Бесплатный план</span>
           </span>
-          <span class="profile-chip__arrow" :class="{ open: profileMenuOpen }">⌄</span>
+          <span class="profile-chip__arrow" :class="{ open: profileMenuOpen }">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m7 10 5 5 5-5" />
+            </svg>
+          </span>
         </button>
 
         <div v-if="profileMenuOpen" class="profile-menu">
@@ -416,10 +449,23 @@ onBeforeUnmount(() => {
       <section class="stats-bar panel">
         <article v-for="item in stats" :key="item.label" class="stat-tile">
           <div class="stat-tile__icon" :class="`tone-${item.tone}`">
-            <span v-if="item.icon === 'bag'">⌂</span>
-            <span v-else-if="item.icon === 'trend'">⌁</span>
-            <span v-else-if="item.icon === 'bell'">◉</span>
-            <span v-else>◌</span>
+            <svg v-if="item.icon === 'bag'" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 9h10l-.8 10H7.8L7 9Z" />
+              <path d="M9.5 9V7a2.5 2.5 0 0 1 5 0v2" />
+            </svg>
+            <svg v-else-if="item.icon === 'trend'" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 16.5 9 11l3.5 3.5L20 7" />
+              <path d="M15.5 7H20v4.5" />
+            </svg>
+            <svg v-else-if="item.icon === 'bell'" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 20c4.1 0 7-2.2 7-5.5 0-2.2-1.2-3.8-3-4.7V8a4 4 0 1 0-8 0v1.8c-1.8.9-3 2.5-3 4.7C5 17.8 7.9 20 12 20Z" />
+              <path d="M10.5 20a1.5 1.5 0 0 0 3 0" />
+            </svg>
+            <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="6.5" />
+              <path d="M12 8.5v3.8" />
+              <path d="M12 15.5h.01" />
+            </svg>
           </div>
           <div>
             <strong>{{ item.value }}</strong>

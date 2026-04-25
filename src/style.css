@@ -209,10 +209,24 @@ a {
 }
 
 .nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   padding: 14px 16px;
   border-radius: 16px;
   color: #c4d0df;
   font-size: 0.98rem;
+}
+
+.nav-item svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .nav-item.active {
@@ -294,8 +308,22 @@ a {
 }
 
 .profile-chip__arrow {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
   color: var(--muted);
   transition: transform 180ms ease;
+}
+
+.profile-chip__arrow svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .profile-chip__arrow.open {
@@ -389,7 +417,16 @@ a {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 1rem;
+}
+
+.stat-tile__icon svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .tone-green {
@@ -536,14 +573,17 @@ a {
 }
 
 .product-thumb {
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  min-width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
   border-radius: 14px;
   display: grid;
   place-items: center;
   background: linear-gradient(180deg, rgba(242, 246, 251, 0.92), rgba(184, 196, 213, 0.72));
   color: #08111d;
   font-weight: 700;
+  line-height: 1;
 }
 
 .product-main strong {
