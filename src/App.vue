@@ -9,7 +9,9 @@ import {
   ShoppingBag,
   TrendingUp,
 } from 'lucide-vue-next'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
+const VueApexCharts = defineAsyncComponent(() => import('vue3-apexcharts'))
 
 const STORAGE_KEY = 'ac_price_auth_session_v2'
 const LEGACY_STORAGE_KEYS = ['ac_price_auth_token', 'ac_price_auth_session']
@@ -88,11 +90,23 @@ const analyticsSummary = computed(() => {
 const analyticsRows = computed(() =>
   analyticsProducts.value.map((item) => {
     const history = item.history ?? []
+    const prices = history.map((point) => point.price)
+    const maxPrice = prices.length ? Math.max(...prices) : item.current_price
 
     return {
       ...item,
       historyCount: history.length,
-      sparkline: buildSparkline(history),
+      maxPrice,
+      chartSeries: [
+        {
+          name: 'Цена',
+          data: history.map((point) => ({
+            x: new Date(point.recorded_at).getTime(),
+            y: point.price,
+          })),
+        },
+      ],
+      chartOptions: buildChartOptions(history),
     }
   }),
 )
@@ -216,23 +230,60 @@ function smartShortenProductName(name, maxLength = 54) {
   return result ? `${result}...` : `${normalized.slice(0, maxLength - 3)}...`
 }
 
-function buildSparkline(history) {
-  if (!history?.length) {
-    return ''
+function buildChartOptions(history) {
+  return {
+    chart: {
+      type: 'line',
+      sparkline: { enabled: true },
+      toolbar: { show: false },
+      animations: { enabled: false },
+      zoom: { enabled: false },
+    },
+    stroke: {
+      curve: 'straight',
+      width: 3,
+      lineCap: 'round',
+    },
+    colors: ['#57e386'],
+    grid: { show: false },
+    markers: {
+      size: 0,
+      hover: {
+        size: 5,
+        sizeOffset: 2,
+      },
+    },
+    tooltip: {
+      theme: 'dark',
+      x: {
+        formatter: (_, { dataPointIndex }) => {
+          const point = history[dataPointIndex]
+          return point ? formatShortDate(point.recorded_at) : ''
+        },
+      },
+      y: {
+        formatter: (value) => formatPrice(value),
+      },
+    },
+    yaxis: {
+      labels: { show: false },
+    },
+    xaxis: {
+      type: 'datetime',
+      labels: { show: false },
+      tooltip: { enabled: false },
+    },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.28,
+        opacityTo: 0.02,
+        stops: [0, 100],
+      },
+    },
+    dataLabels: { enabled: false },
   }
-
-  const values = history.map((item) => item.price)
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = max - min || 1
-
-  return history
-    .map((item, index) => {
-      const x = (index / Math.max(history.length - 1, 1)) * 100
-      const y = 100 - ((item.price - min) / range) * 100
-      return `${x},${y}`
-    })
-    .join(' ')
 }
 
 async function loadProfile() {
@@ -683,9 +734,13 @@ onBeforeUnmount(() => {
               </div>
 
               <div class="analytics-row__chart">
-                <svg v-if="item.sparkline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                  <polyline :points="item.sparkline" />
-                </svg>
+                <VueApexCharts
+                  v-if="item.chartSeries[0].data.length"
+                  type="line"
+                  height="78"
+                  :options="item.chartOptions"
+                  :series="item.chartSeries"
+                />
               </div>
 
               <div class="analytics-row__stats">
@@ -696,6 +751,10 @@ onBeforeUnmount(() => {
                 <div>
                   <span>Минимум</span>
                   <strong class="price-min">{{ formatPrice(item.min_price) }}</strong>
+                </div>
+                <div>
+                  <span>Максимум</span>
+                  <strong>{{ formatPrice(item.maxPrice) }}</strong>
                 </div>
                 <div>
                   <span>Последнее изменение</span>
