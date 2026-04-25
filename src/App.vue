@@ -396,14 +396,14 @@ onBeforeUnmount(() => {
           <a href="#" class="nav-item">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="12" r="3.25" />
-              <path d="M12 4.5v2" />
-              <path d="M12 17.5v2" />
-              <path d="m18.5 12-2 0" />
-              <path d="m7.5 12-2 0" />
-              <path d="m17.3 6.7-1.4 1.4" />
-              <path d="m8.1 15.9-1.4 1.4" />
-              <path d="m17.3 17.3-1.4-1.4" />
-              <path d="m8.1 8.1-1.4-1.4" />
+              <path d="M12 3.75 13.1 6.1" />
+              <path d="m18.15 5.85-1.9 1.8" />
+              <path d="m20.25 12-2.35.1" />
+              <path d="m18.15 18.15-1.9-1.8" />
+              <path d="M12 20.25 10.9 17.9" />
+              <path d="m5.85 18.15 1.9-1.8" />
+              <path d="M3.75 12 6.1 11.9" />
+              <path d="m5.85 5.85 1.9 1.8" />
             </svg>
             <span>Настройки</span>
           </a>
