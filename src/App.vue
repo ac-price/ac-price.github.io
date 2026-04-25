@@ -605,7 +605,16 @@ onBeforeUnmount(() => {
             </div>
             <article v-for="item in products" :key="item.id" class="table-row">
               <div class="product-main">
-                <div class="product-thumb">{{ buildThumb(item.product_name) }}</div>
+                <div class="product-thumb">
+                  <img
+                    v-if="item.image_url"
+                    :src="item.image_url"
+                    :alt="item.product_name"
+                    class="product-thumb__image"
+                    loading="lazy"
+                  />
+                  <template v-else>{{ buildThumb(item.product_name) }}</template>
+                </div>
                 <div class="product-copy">
                   <strong :title="item.product_name">{{ smartShortenProductName(item.product_name) }}</strong>
                   <a :href="item.url" target="_blank" rel="noreferrer">{{ item.url }}</a>
@@ -666,7 +675,16 @@ onBeforeUnmount(() => {
 
             <article v-for="item in analyticsRows" :key="item.id" class="analytics-row">
               <div class="analytics-row__main">
-                <div class="product-thumb">{{ buildThumb(item.product_name) }}</div>
+                <div class="product-thumb">
+                  <img
+                    v-if="item.image_url"
+                    :src="item.image_url"
+                    :alt="item.product_name"
+                    class="product-thumb__image"
+                    loading="lazy"
+                  />
+                  <template v-else>{{ buildThumb(item.product_name) }}</template>
+                </div>
                 <div class="analytics-row__copy">
                   <strong :title="item.product_name">{{ smartShortenProductName(item.product_name, 48) }}</strong>
                   <span>{{ item.historyCount }} точек истории</span>
