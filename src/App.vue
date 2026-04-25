@@ -1,4 +1,14 @@
 <script setup>
+import {
+  Bell,
+  ChartNoAxesColumn,
+  ChevronDown,
+  CircleDollarSign,
+  House,
+  Settings,
+  ShoppingBag,
+  TrendingUp,
+} from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const STORAGE_KEY = 'ac_price_auth_session_v2'
@@ -357,10 +367,7 @@ onBeforeUnmount(() => {
       <div>
         <div class="brand-card">
           <div class="brand-mark">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 16.5 9 11l3.5 3.5L20 7" />
-              <path d="M15.5 7H20v4.5" />
-            </svg>
+            <TrendingUp aria-hidden="true" />
           </div>
           <div>
             <p class="brand-title">AC Price</p>
@@ -370,41 +377,19 @@ onBeforeUnmount(() => {
 
         <nav class="sidebar-nav">
           <a href="#" class="nav-item active">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 10.5 12 4l8 6.5" />
-              <path d="M6.5 9.5V20h11V9.5" />
-              <path d="M10 20v-5.5h4V20" />
-            </svg>
+            <House aria-hidden="true" />
             <span>Главная</span>
           </a>
           <a href="#" class="nav-item">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 18h16" />
-              <path d="M7 15V11" />
-              <path d="M12 15V7" />
-              <path d="M17 15v-4" />
-            </svg>
+            <ChartNoAxesColumn aria-hidden="true" />
             <span>Аналитика</span>
           </a>
           <a href="#" class="nav-item">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 4.75a3.25 3.25 0 0 0-3.25 3.25v1.35c0 .7-.23 1.39-.65 1.95l-1.05 1.4a1.75 1.75 0 0 0 1.4 2.8h7.1a1.75 1.75 0 0 0 1.4-2.8l-1.05-1.4a3.25 3.25 0 0 1-.65-1.95V8A3.25 3.25 0 0 0 12 4.75Z" />
-              <path d="M10.25 18a1.75 1.75 0 0 0 3.5 0" />
-            </svg>
+            <Bell aria-hidden="true" />
             <span>Уведомления</span>
           </a>
           <a href="#" class="nav-item">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="3.25" />
-              <path d="M12 3.75 13.1 6.1" />
-              <path d="m18.15 5.85-1.9 1.8" />
-              <path d="m20.25 12-2.35.1" />
-              <path d="m18.15 18.15-1.9-1.8" />
-              <path d="M12 20.25 10.9 17.9" />
-              <path d="m5.85 18.15 1.9-1.8" />
-              <path d="M3.75 12 6.1 11.9" />
-              <path d="m5.85 5.85 1.9 1.8" />
-            </svg>
+            <Settings aria-hidden="true" />
             <span>Настройки</span>
           </a>
         </nav>
@@ -428,9 +413,7 @@ onBeforeUnmount(() => {
             <span>Бесплатный план</span>
           </span>
           <span class="profile-chip__arrow" :class="{ open: profileMenuOpen }">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m7 10 5 5 5-5" />
-            </svg>
+            <ChevronDown aria-hidden="true" />
           </span>
         </button>
 
@@ -454,23 +437,10 @@ onBeforeUnmount(() => {
       <section class="stats-bar panel">
         <article v-for="item in stats" :key="item.label" class="stat-tile">
           <div class="stat-tile__icon" :class="`tone-${item.tone}`">
-            <svg v-if="item.icon === 'bag'" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 9h10l-.8 10H7.8L7 9Z" />
-              <path d="M9.5 9V7a2.5 2.5 0 0 1 5 0v2" />
-            </svg>
-            <svg v-else-if="item.icon === 'trend'" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 16.5 9 11l3.5 3.5L20 7" />
-              <path d="M15.5 7H20v4.5" />
-            </svg>
-            <svg v-else-if="item.icon === 'bell'" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 20c4.1 0 7-2.2 7-5.5 0-2.2-1.2-3.8-3-4.7V8a4 4 0 1 0-8 0v1.8c-1.8.9-3 2.5-3 4.7C5 17.8 7.9 20 12 20Z" />
-              <path d="M10.5 20a1.5 1.5 0 0 0 3 0" />
-            </svg>
-            <svg v-else viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="6.5" />
-              <path d="M12 8.5v3.8" />
-              <path d="M12 15.5h.01" />
-            </svg>
+            <ShoppingBag v-if="item.icon === 'bag'" aria-hidden="true" />
+            <TrendingUp v-else-if="item.icon === 'trend'" aria-hidden="true" />
+            <Bell v-else-if="item.icon === 'bell'" aria-hidden="true" />
+            <CircleDollarSign v-else aria-hidden="true" />
           </div>
           <div>
             <strong>{{ item.value }}</strong>
