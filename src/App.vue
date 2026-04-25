@@ -1,4 +1,5 @@
 <script setup>
+import AnalyticsMiniChart from './components/AnalyticsMiniChart.vue'
 import {
   Bell,
   ChartNoAxesColumn,
@@ -9,9 +10,7 @@ import {
   ShoppingBag,
   TrendingUp,
 } from 'lucide-vue-next'
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-
-const VueApexCharts = defineAsyncComponent(() => import('vue3-apexcharts'))
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const STORAGE_KEY = 'ac_price_auth_session_v2'
 const LEGACY_STORAGE_KEYS = ['ac_price_auth_token', 'ac_price_auth_session']
@@ -97,16 +96,6 @@ const analyticsRows = computed(() =>
       ...item,
       historyCount: history.length,
       maxPrice,
-      chartSeries: [
-        {
-          name: 'Цена',
-          data: history.map((point) => ({
-            x: new Date(point.recorded_at).getTime(),
-            y: point.price,
-          })),
-        },
-      ],
-      chartOptions: buildChartOptions(history),
     }
   }),
 )
@@ -228,65 +217,6 @@ function smartShortenProductName(name, maxLength = 54) {
   }
 
   return result ? `${result}...` : `${normalized.slice(0, maxLength - 3)}...`
-}
-
-function buildChartOptions(history) {
-  return {
-    chart: {
-      type: 'line',
-      sparkline: { enabled: true },
-      toolbar: { show: false },
-      animations: { enabled: false },
-      zoom: { enabled: false },
-    },
-    stroke: {
-      curve: 'straight',
-      width: 5,
-      lineCap: 'round',
-    },
-    colors: ['#7dffb2'],
-    grid: { show: false },
-    markers: {
-      size: 3,
-      colors: ['#7dffb2'],
-      strokeColors: '#07101c',
-      strokeWidth: 3,
-      hover: {
-        size: 7,
-        sizeOffset: 3,
-      },
-    },
-    tooltip: {
-      theme: 'dark',
-      x: {
-        formatter: (_, { dataPointIndex }) => {
-          const point = history[dataPointIndex]
-          return point ? formatShortDate(point.recorded_at) : ''
-        },
-      },
-      y: {
-        formatter: (value) => formatPrice(value),
-      },
-    },
-    yaxis: {
-      labels: { show: false },
-    },
-    xaxis: {
-      type: 'datetime',
-      labels: { show: false },
-      tooltip: { enabled: false },
-    },
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.52,
-        opacityTo: 0.16,
-        stops: [0, 100],
-      },
-    },
-    dataLabels: { enabled: false },
-  }
 }
 
 async function loadProfile() {
@@ -737,12 +667,11 @@ onBeforeUnmount(() => {
               </div>
 
               <div class="analytics-row__chart">
-                <VueApexCharts
-                  v-if="item.chartSeries[0].data.length"
-                  type="line"
-                  height="78"
-                  :options="item.chartOptions"
-                  :series="item.chartSeries"
+                <AnalyticsMiniChart
+                  v-if="item.historyCount"
+                  :history="item.history"
+                  :format-price="formatPrice"
+                  :format-short-date="formatShortDate"
                 />
               </div>
 
