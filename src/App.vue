@@ -53,8 +53,10 @@ const quietHoursEnabled = ref(false)
 const outOfStockAlerts = ref(true)
 const digestEnabled = ref(false)
 const notificationSelectOpen = ref(false)
+const notificationsReady = ref(false)
 
 let telegramScript = null
+let browserNotificationTimer = null
 
 const notificationOptions = [
   { value: 'every_change', label: 'При каждом изменении', hint: 'Сигнал сразу после любой смены цены' },
@@ -296,6 +298,53 @@ async function loadProfile() {
   profile.value = payload
 }
 
+function applyNotificationSettings(payload) {
+  notificationChannel.value = payload.notification_channel ?? 'telegram'
+  notificationRule.value = payload.notification_rule ?? 'every_change'
+  notificationAmount.value = payload.notification_amount_threshold ?? 5000
+  browserSoundEnabled.value = payload.browser_sound_enabled ?? true
+  quietHoursEnabled.value = payload.quiet_hours_enabled ?? false
+  outOfStockAlerts.value = payload.out_of_stock_alerts ?? true
+  digestEnabled.value = payload.digest_enabled ?? false
+}
+
+async function loadNotificationSettings() {
+  if (!session.value?.token) {
+    notificationsReady.value = false
+    return
+  }
+
+  const response = await fetch(`${apiBaseUrl}/api/v1/notifications/settings`, {
+    headers: getAuthHeaders(),
+  })
+  const payload = await response.json()
+  if (!response.ok) {
+    throw new Error(payload.detail || 'Не удалось загрузить настройки уведомлений.')
+  }
+  applyNotificationSettings(payload)
+  notificationsReady.value = true
+}
+
+async function saveNotificationSettings() {
+  if (!session.value?.token || !notificationsReady.value) {
+    return
+  }
+
+  await fetch(`${apiBaseUrl}/api/v1/notifications/settings`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      notification_channel: notificationChannel.value,
+      notification_rule: notificationRule.value,
+      notification_amount_threshold: notificationAmount.value,
+      browser_sound_enabled: browserSoundEnabled.value,
+      quiet_hours_enabled: quietHoursEnabled.value,
+      out_of_stock_alerts: outOfStockAlerts.value,
+      digest_enabled: digestEnabled.value,
+    }),
+  })
+}
+
 async function loadProducts() {
   if (!session.value?.token) {
     products.value = []
@@ -438,9 +487,11 @@ function clearUrlState() {
 }
 
 function logout() {
+  stopBrowserNotificationPolling()
   window.localStorage.removeItem(STORAGE_KEY)
   session.value = null
   profile.value = null
+  notificationsReady.value = false
   profileMenuOpen.value = false
   authMessage.value = ''
   authError.value = ''
@@ -474,6 +525,84 @@ async function openPage(pageKey) {
   }
 }
 
+async function requestBrowserNotificationPermission() {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return 'denied'
+  }
+  if (window.Notification.permission === 'granted') {
+    return 'granted'
+  }
+  return window.Notification.requestPermission()
+}
+
+function playBrowserNotificationSound() {
+  if (!browserSoundEnabled.value || typeof window === 'undefined' || !window.AudioContext) {
+    return
+  }
+  const context = new window.AudioContext()
+  const oscillator = context.createOscillator()
+  const gain = context.createGain()
+  oscillator.type = 'sine'
+  oscillator.frequency.value = 880
+  gain.gain.value = 0.02
+  oscillator.connect(gain)
+  gain.connect(context.destination)
+  oscillator.start()
+  oscillator.stop(context.currentTime + 0.12)
+}
+
+async function markNotificationRead(eventId) {
+  await fetch(`${apiBaseUrl}/api/v1/notifications/events/${eventId}/read`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  })
+}
+
+async function pollBrowserNotifications() {
+  if (
+    !session.value?.token ||
+    notificationChannel.value !== 'browser' ||
+    typeof window === 'undefined' ||
+    !('Notification' in window) ||
+    window.Notification.permission !== 'granted'
+  ) {
+    return
+  }
+
+  const response = await fetch(`${apiBaseUrl}/api/v1/notifications/events`, {
+    headers: getAuthHeaders(),
+  })
+  const payload = await response.json()
+  if (!response.ok || !payload.items?.length) {
+    return
+  }
+
+  for (const item of payload.items) {
+    new window.Notification(item.title, {
+      body: item.message,
+      icon: '/favicon.svg',
+      tag: `ac-price-${item.id}`,
+    })
+    playBrowserNotificationSound()
+    await markNotificationRead(item.id)
+  }
+}
+
+function stopBrowserNotificationPolling() {
+  if (browserNotificationTimer) {
+    window.clearInterval(browserNotificationTimer)
+    browserNotificationTimer = null
+  }
+}
+
+function startBrowserNotificationPolling() {
+  stopBrowserNotificationPolling()
+  pollBrowserNotifications().catch(() => {})
+  browserNotificationTimer = window.setInterval(() => {
+    pollBrowserNotifications().catch(() => {})
+  }, 30000)
+}
+
 onMounted(async () => {
   for (const key of LEGACY_STORAGE_KEYS) {
     window.localStorage.removeItem(key)
@@ -502,7 +631,9 @@ onMounted(async () => {
   if (session.value?.token) {
     try {
       await loadProfile()
+      await loadNotificationSettings()
       await loadProducts()
+      startBrowserNotificationPolling()
     } catch (error) {
       authError.value = error.message || 'Не удалось загрузить данные аккаунта.'
     }
@@ -515,14 +646,39 @@ watch(isAuthenticated, async () => {
   if (isAuthenticated.value) {
     try {
       await loadProfile()
+      await loadNotificationSettings()
       await loadProducts()
+      startBrowserNotificationPolling()
     } catch (error) {
       authError.value = error.message || 'Не удалось загрузить данные аккаунта.'
     }
   }
 })
 
+watch(notificationChannel, async (value) => {
+  if (value === 'browser') {
+    await requestBrowserNotificationPermission()
+  }
+  startBrowserNotificationPolling()
+})
+
+watch(
+  [
+    notificationChannel,
+    notificationRule,
+    notificationAmount,
+    browserSoundEnabled,
+    quietHoursEnabled,
+    outOfStockAlerts,
+    digestEnabled,
+  ],
+  async () => {
+    await saveNotificationSettings()
+  },
+)
+
 onBeforeUnmount(() => {
+  stopBrowserNotificationPolling()
   cleanupTelegramWidget()
 })
 </script>
