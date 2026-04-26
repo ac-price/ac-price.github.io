@@ -32,6 +32,7 @@ const session = ref(null)
 const profile = ref(null)
 const profileMenuOpen = ref(false)
 const currentPage = ref('home')
+const notificationSelectRef = ref(null)
 
 const products = ref([])
 const isProductsLoading = ref(false)
@@ -57,12 +58,12 @@ const notificationsReady = ref(false)
 
 let telegramScript = null
 let browserNotificationTimer = null
+let notificationSelectListenerAttached = false
 
 const notificationOptions = [
   { value: 'every_change', label: 'При каждом изменении', hint: 'Сигнал сразу после любой смены цены' },
   { value: 'drop_only', label: 'Только при снижении', hint: 'Без уведомлений о росте цены' },
   { value: 'amount_change', label: 'При изменении на сумму', hint: 'Срабатывает только после заданного порога' },
-  { value: 'daily_digest', label: 'Сводка раз в день', hint: 'Один ежедневный отчёт со всеми изменениями' },
 ]
 
 const hasTelegramWidget = computed(() => Boolean(botName))
@@ -148,7 +149,7 @@ const amountChangeLabel = computed(() => formatPrice(notificationAmount.value))
 const notificationFact = computed(() =>
   notificationChannel.value === 'telegram'
     ? 'Уведомления будут приходить в Telegram сразу после очередной проверки цены.'
-    : 'Браузерные push-уведомления работают в том браузере, где вы разрешили показ уведомлений.',
+    : 'Браузерные push-уведомления будут приходить в том браузере, где вы разрешили показ уведомлений, даже если сайт уже закрыт.',
 )
 
 const navItems = [
@@ -486,7 +487,10 @@ function clearUrlState() {
   }
 }
 
-function logout() {
+async function logout() {
+  try {
+    await syncPushSubscription(false)
+  } catch {}
   stopBrowserNotificationPolling()
   window.localStorage.removeItem(STORAGE_KEY)
   session.value = null
@@ -508,9 +512,26 @@ function toggleProfileMenu() {
   profileMenuOpen.value = !profileMenuOpen.value
 }
 
+function handleDocumentPointerDown(event) {
+  if (!notificationSelectOpen.value || !notificationSelectRef.value) {
+    return
+  }
+
+  if (!notificationSelectRef.value.contains(event.target)) {
+    notificationSelectOpen.value = false
+  }
+}
+
 function selectNotificationRule(value) {
   notificationRule.value = value
   notificationSelectOpen.value = false
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const normalized = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = window.atob(normalized)
+  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)))
 }
 
 async function openPage(pageKey) {
@@ -533,6 +554,64 @@ async function requestBrowserNotificationPermission() {
     return 'granted'
   }
   return window.Notification.requestPermission()
+}
+
+async function getServiceWorkerRegistration() {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    return null
+  }
+
+  const existing = await navigator.serviceWorker.getRegistration('/sw.js')
+  if (existing) {
+    return existing
+  }
+
+  return navigator.serviceWorker.register('/sw.js')
+}
+
+async function syncPushSubscription(enableBrowserPush) {
+  const registration = await getServiceWorkerRegistration()
+  if (!registration || !session.value?.token) {
+    return
+  }
+
+  const existing = await registration.pushManager.getSubscription()
+  if (!enableBrowserPush) {
+    if (existing) {
+      await existing.unsubscribe()
+    }
+    await fetch(`${apiBaseUrl}/api/v1/notifications/push/subscribe`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    })
+    return
+  }
+
+  const keyResponse = await fetch(`${apiBaseUrl}/api/v1/notifications/push/public-key`, {
+    headers: getAuthHeaders(),
+  })
+  const keyPayload = await keyResponse.json()
+  if (!keyResponse.ok || !keyPayload.public_key) {
+    return
+  }
+
+  const permission = await requestBrowserNotificationPermission()
+  if (permission !== 'granted') {
+    return
+  }
+
+  const subscription =
+    existing ||
+    (await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(keyPayload.public_key),
+    }))
+
+  await fetch(`${apiBaseUrl}/api/v1/notifications/push/subscribe`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(subscription.toJSON()),
+  })
 }
 
 function playBrowserNotificationSound() {
@@ -604,6 +683,11 @@ function startBrowserNotificationPolling() {
 }
 
 onMounted(async () => {
+  if (!notificationSelectListenerAttached) {
+    document.addEventListener('pointerdown', handleDocumentPointerDown)
+    notificationSelectListenerAttached = true
+  }
+
   for (const key of LEGACY_STORAGE_KEYS) {
     window.localStorage.removeItem(key)
   }
@@ -632,6 +716,7 @@ onMounted(async () => {
     try {
       await loadProfile()
       await loadNotificationSettings()
+      await syncPushSubscription(notificationChannel.value === 'browser')
       await loadProducts()
       startBrowserNotificationPolling()
     } catch (error) {
@@ -647,6 +732,7 @@ watch(isAuthenticated, async () => {
     try {
       await loadProfile()
       await loadNotificationSettings()
+      await syncPushSubscription(notificationChannel.value === 'browser')
       await loadProducts()
       startBrowserNotificationPolling()
     } catch (error) {
@@ -659,6 +745,7 @@ watch(notificationChannel, async (value) => {
   if (value === 'browser') {
     await requestBrowserNotificationPermission()
   }
+  await syncPushSubscription(value === 'browser')
   startBrowserNotificationPolling()
 })
 
@@ -678,6 +765,10 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  if (notificationSelectListenerAttached) {
+    document.removeEventListener('pointerdown', handleDocumentPointerDown)
+    notificationSelectListenerAttached = false
+  }
   stopBrowserNotificationPolling()
   cleanupTelegramWidget()
 })
@@ -949,7 +1040,7 @@ onBeforeUnmount(() => {
         </header>
 
         <section class="notifications-layout">
-          <article class="notification-panel panel">
+          <article class="notification-panel panel" :class="{ 'notification-panel--raised': notificationSelectOpen }">
             <div class="notification-panel__head">
               <div>
                 <p class="section-kicker">Канал доставки</p>
@@ -998,7 +1089,7 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
-            <div class="custom-select">
+            <div ref="notificationSelectRef" class="custom-select">
               <button type="button" class="custom-select__trigger" @click="notificationSelectOpen = !notificationSelectOpen">
                 <div>
                   <strong>{{ selectedNotificationOption.label }}</strong>

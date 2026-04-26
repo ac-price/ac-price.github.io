@@ -518,11 +518,19 @@ a {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+  overflow: visible;
+  align-content: start;
 }
 
 .notification-panel {
+  position: relative;
+  overflow: visible;
   border-radius: 24px;
   padding: 20px;
+}
+
+.notification-panel--raised {
+  z-index: 20;
 }
 
 .notification-panel__head {
@@ -626,6 +634,7 @@ a {
 
 .custom-select {
   position: relative;
+  z-index: 2;
 }
 
 .custom-select__trigger {
@@ -667,7 +676,7 @@ a {
 
 .custom-select__menu {
   position: absolute;
-  z-index: 5;
+  z-index: 30;
   inset: calc(100% + 10px) 0 auto;
   padding: 8px;
   border-radius: 18px;
