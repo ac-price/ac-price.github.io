@@ -827,7 +827,7 @@ onBeforeUnmount(() => {
         </button>
 
         <div v-if="profileMenuOpen" class="profile-menu profile-menu--mobile">
-          <button type="button" class="profile-menu__item" @click="logout">Р’С‹Р№С‚Рё</button>
+          <button type="button" class="profile-menu__item" @click="logout">Выйти</button>
         </div>
       </div>
     </div>
