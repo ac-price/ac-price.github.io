@@ -1040,7 +1040,7 @@ onBeforeUnmount(() => {
         </header>
 
         <section class="notifications-layout">
-          <article class="notification-panel panel" :class="{ 'notification-panel--raised': notificationSelectOpen }">
+          <article class="notification-panel panel">
             <div class="notification-panel__head">
               <div>
                 <p class="section-kicker">Канал доставки</p>
@@ -1081,7 +1081,7 @@ onBeforeUnmount(() => {
             <p class="notification-panel__fact">{{ notificationFact }}</p>
           </article>
 
-          <article class="notification-panel panel">
+          <article class="notification-panel panel" :class="{ 'notification-panel--raised': notificationSelectOpen }">
             <div class="notification-panel__head">
               <div>
                 <p class="section-kicker">Частота</p>
