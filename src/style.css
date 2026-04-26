@@ -1504,10 +1504,10 @@ a {
   }
 
   .table-row > :nth-child(4) {
-    grid-column: 1 / -1;
-    align-items: center;
-    text-align: center;
-    justify-self: center;
+    grid-column: 1 / 2;
+    align-items: flex-start;
+    text-align: left;
+    justify-self: stretch;
   }
 
   .table-row > :nth-child(2)::before,
