@@ -784,6 +784,186 @@ onBeforeUnmount(() => {
         </template>
       </template>
 
+      <template v-else-if="currentPage === 'notifications'">
+        <header class="dashboard-header">
+          <div>
+            <h1 class="dashboard-title">Уведомления</h1>
+            <p class="dashboard-subtitle">Настройте канал доставки, частоту и правила срабатывания уведомлений</p>
+          </div>
+        </header>
+
+        <section class="notifications-layout">
+          <article class="notification-panel panel">
+            <div class="notification-panel__head">
+              <div>
+                <p class="section-kicker">Канал доставки</p>
+                <h2>Куда отправлять сигналы</h2>
+              </div>
+              <div class="notification-status">
+                <ShieldCheck aria-hidden="true" />
+                <span>Доступно для всех тарифов</span>
+              </div>
+            </div>
+
+            <div class="channel-switch">
+              <button
+                type="button"
+                class="channel-switch__option"
+                :class="{ active: notificationChannel === 'browser' }"
+                @click="notificationChannel = 'browser'"
+              >
+                <Monitor aria-hidden="true" />
+                <span>В браузер</span>
+              </button>
+
+              <div class="channel-switch__track" :class="{ telegram: notificationChannel === 'telegram' }">
+                <span class="channel-switch__thumb"></span>
+              </div>
+
+              <button
+                type="button"
+                class="channel-switch__option"
+                :class="{ active: notificationChannel === 'telegram' }"
+                @click="notificationChannel = 'telegram'"
+              >
+                <MessageCircleMore aria-hidden="true" />
+                <span>В Telegram</span>
+              </button>
+            </div>
+
+            <p class="notification-panel__fact">{{ notificationFact }}</p>
+          </article>
+
+          <article class="notification-panel panel">
+            <div class="notification-panel__head">
+              <div>
+                <p class="section-kicker">Частота</p>
+                <h2>Когда присылать уведомления</h2>
+              </div>
+            </div>
+
+            <div class="custom-select">
+              <button type="button" class="custom-select__trigger" @click="notificationSelectOpen = !notificationSelectOpen">
+                <div>
+                  <strong>{{ selectedNotificationOption.label }}</strong>
+                  <span>{{ selectedNotificationOption.hint }}</span>
+                </div>
+                <span class="custom-select__arrow" :class="{ open: notificationSelectOpen }">
+                  <ChevronDown aria-hidden="true" />
+                </span>
+              </button>
+
+              <div v-if="notificationSelectOpen" class="custom-select__menu">
+                <button
+                  v-for="option in notificationOptions"
+                  :key="option.value"
+                  type="button"
+                  class="custom-select__option"
+                  :class="{ active: option.value === notificationRule }"
+                  @click="selectNotificationRule(option.value)"
+                >
+                  <div>
+                    <strong>{{ option.label }}</strong>
+                    <span>{{ option.hint }}</span>
+                  </div>
+                  <Check v-if="option.value === notificationRule" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+
+            <div v-if="notificationRule === 'amount_change'" class="range-setting">
+              <div class="range-setting__head">
+                <span>Порог изменения</span>
+                <strong>{{ amountChangeLabel }}</strong>
+              </div>
+              <input v-model="notificationAmount" class="range-setting__input" type="range" min="500" max="50000" step="500" />
+              <div class="range-setting__scale">
+                <span>500 ₸</span>
+                <span>50 000 ₸</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="notification-panel panel">
+            <div class="notification-panel__head">
+              <div>
+                <p class="section-kicker">Дополнительно</p>
+                <h2>Полезные настройки</h2>
+              </div>
+            </div>
+
+            <div class="setting-list">
+              <label class="setting-row">
+                <div class="setting-row__copy">
+                  <strong>Звук в браузере</strong>
+                  <span>Добавляет короткий сигнал к браузерному push-уведомлению</span>
+                </div>
+                <input v-model="browserSoundEnabled" class="switch-input" type="checkbox" />
+              </label>
+
+              <label class="setting-row">
+                <div class="setting-row__copy">
+                  <strong>Не беспокоить ночью</strong>
+                  <span>Откладывать несрочные уведомления с 23:00 до 08:00</span>
+                </div>
+                <input v-model="quietHoursEnabled" class="switch-input" type="checkbox" />
+              </label>
+
+              <label class="setting-row">
+                <div class="setting-row__copy">
+                  <strong>Товар пропал из наличия</strong>
+                  <span>Присылать отдельный сигнал, если карточка стала недоступна</span>
+                </div>
+                <input v-model="outOfStockAlerts" class="switch-input" type="checkbox" />
+              </label>
+
+              <label class="setting-row">
+                <div class="setting-row__copy">
+                  <strong>Вечерняя сводка</strong>
+                  <span>Один компактный отчёт по всем изменениям за день</span>
+                </div>
+                <input v-model="digestEnabled" class="switch-input" type="checkbox" />
+              </label>
+            </div>
+          </article>
+
+          <article class="notification-panel notification-preview panel">
+            <div class="notification-panel__head">
+              <div>
+                <p class="section-kicker">Превью</p>
+                <h2>Как это будет выглядеть</h2>
+              </div>
+            </div>
+
+            <div class="notification-preview__card">
+              <div class="notification-preview__icon" :class="notificationChannel">
+                <BellRing aria-hidden="true" />
+              </div>
+              <div class="notification-preview__copy">
+                <strong>Apple MacBook Air 13</strong>
+                <p>Цена снизилась до 465 190 ₸. Минимум обновлён, можно проверять карточку.</p>
+              </div>
+            </div>
+
+            <ul class="notification-preview__meta">
+              <li>
+                <SlidersHorizontal aria-hidden="true" />
+                <span>{{ selectedNotificationOption.label }}</span>
+              </li>
+              <li>
+                <MessageCircleMore v-if="notificationChannel === 'telegram'" aria-hidden="true" />
+                <Monitor v-else aria-hidden="true" />
+                <span>{{ notificationChannel === 'telegram' ? 'Telegram-канал' : 'Браузерный push' }}</span>
+              </li>
+              <li v-if="notificationRule === 'amount_change'">
+                <CircleDollarSign aria-hidden="true" />
+                <span>Порог: {{ amountChangeLabel }}</span>
+              </li>
+            </ul>
+          </article>
+        </section>
+      </template>
+
       <template v-else>
         <section class="analytics-lock panel">
           <div class="empty-state">Раздел пока в разработке.</div>
