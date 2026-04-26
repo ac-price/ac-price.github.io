@@ -1561,7 +1561,7 @@ a {
   }
 
   .analytics-summary {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
 
@@ -1635,10 +1635,6 @@ a {
     width: 16px;
     height: 16px;
     flex-basis: 16px;
-  }
-
-  .stats-bar {
-    grid-template-columns: 1fr;
   }
 
   .channel-switch__option {
