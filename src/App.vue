@@ -804,6 +804,34 @@ onBeforeUnmount(() => {
   </main>
 
   <main v-else class="dashboard">
+    <div class="mobile-topbar panel">
+      <div class="mobile-brand">
+        <div class="brand-mark">
+          <TrendingUp aria-hidden="true" />
+        </div>
+        <div>
+          <p class="brand-title">AC Price</p>
+          <p class="brand-subtitle">Kaspi price tracker</p>
+        </div>
+      </div>
+
+      <div class="mobile-topbar__actions">
+        <button type="button" class="mobile-profile" @click="toggleProfileMenu">
+          <span class="profile-chip__avatar">
+            {{ (session?.username || 'U').slice(0, 2).toUpperCase() }}
+          </span>
+          <span class="mobile-profile__name">{{ session?.username || 'user' }}</span>
+          <span class="profile-chip__arrow" :class="{ open: profileMenuOpen }">
+            <ChevronDown aria-hidden="true" />
+          </span>
+        </button>
+
+        <div v-if="profileMenuOpen" class="profile-menu profile-menu--mobile">
+          <button type="button" class="profile-menu__item" @click="logout">Р’С‹Р№С‚Рё</button>
+        </div>
+      </div>
+    </div>
+
     <aside class="sidebar panel">
       <div>
         <div class="brand-card">
@@ -1217,6 +1245,20 @@ onBeforeUnmount(() => {
         </section>
       </template>
     </section>
+
+    <nav class="mobile-nav panel">
+      <button
+        v-for="item in navItems"
+        :key="`mobile-${item.key}`"
+        type="button"
+        class="nav-item"
+        :class="{ active: currentPage === item.key, muted: item.disabled }"
+        @click="openPage(item.key)"
+      >
+        <component :is="item.icon" aria-hidden="true" />
+        <span>{{ item.label }}</span>
+      </button>
+    </nav>
 
     <div v-if="isAddModalOpen" class="modal-backdrop" @click.self="closeAddModal">
       <section class="modal-card panel">

@@ -47,6 +47,11 @@ a {
   min-height: 100vh;
 }
 
+.mobile-topbar,
+.mobile-nav {
+  display: none;
+}
+
 .panel {
   border: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(14, 21, 34, 0.95), rgba(8, 13, 23, 0.9));
@@ -1272,22 +1277,25 @@ a {
   }
 
   .login-card,
-  .sidebar,
   .stats-bar,
   .products-card {
     border-radius: 20px;
   }
 
-  .sidebar {
-    position: relative;
-    padding: 14px;
-    overflow: visible;
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 18px;
   }
 
-  .brand-card {
-    margin-bottom: 0;
+  .mobile-brand {
+    min-width: 0;
+    display: flex;
     align-items: center;
-    padding-right: 124px;
+    gap: 10px;
   }
 
   .brand-mark {
@@ -1300,12 +1308,50 @@ a {
     font-size: 1.02rem;
   }
 
-  .brand-subtitle,
-  .premium-card {
+  .mobile-topbar .brand-subtitle {
+    display: block;
+    font-size: 0.74rem;
+    white-space: nowrap;
+  }
+
+  .mobile-topbar__actions {
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  .mobile-profile {
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text);
+  }
+
+  .mobile-profile__name {
+    max-width: 72px;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .profile-menu--mobile {
+    top: calc(100% + 8px);
+    bottom: auto;
+    left: auto;
+    right: 0;
+    width: 148px;
+  }
+
+  .sidebar {
     display: none;
   }
 
-  .sidebar-nav {
+  .mobile-nav {
     position: fixed;
     left: 12px;
     right: 12px;
@@ -1323,7 +1369,7 @@ a {
     overflow: hidden;
   }
 
-  .nav-item {
+  .mobile-nav .nav-item {
     min-width: 0;
     width: 100%;
     min-height: 58px;
@@ -1336,64 +1382,21 @@ a {
     text-align: center;
   }
 
-  .nav-item svg {
+  .mobile-nav .nav-item svg {
     width: 17px;
     height: 17px;
     flex-basis: 17px;
   }
 
-  .nav-item:hover:not(.active):not(.muted) {
+  .mobile-nav .nav-item:hover:not(.active):not(.muted) {
     transform: none;
   }
 
-  .nav-item span {
+  .mobile-nav .nav-item span {
     display: block;
     line-height: 1.1;
     white-space: normal;
     overflow-wrap: anywhere;
-  }
-
-  .profile-anchor {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    margin-top: 0;
-    z-index: 2;
-  }
-
-  .profile-chip {
-    width: auto;
-    min-width: 0;
-    padding: 8px 10px;
-    gap: 8px;
-    border-radius: 14px;
-  }
-
-  .profile-chip__avatar {
-    width: 30px;
-    height: 30px;
-    font-size: 0.78rem;
-  }
-
-  .profile-chip__info strong {
-    max-width: 84px;
-    font-size: 0.84rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .profile-chip__info span,
-  .profile-chip__arrow {
-    display: none;
-  }
-
-  .profile-menu {
-    top: calc(100% + 8px);
-    bottom: auto;
-    left: auto;
-    right: 0;
-    width: 148px;
   }
 
   .dashboard-main {
@@ -1600,7 +1603,7 @@ a {
     font-size: 0.86rem;
   }
 
-  .sidebar-nav {
+  .mobile-nav {
     left: 10px;
     right: 10px;
     bottom: calc(10px + env(safe-area-inset-bottom));
@@ -1608,14 +1611,14 @@ a {
     padding: 6px;
   }
 
-  .nav-item {
+  .mobile-nav .nav-item {
     min-height: 54px;
     gap: 4px;
     padding: 8px 3px;
     font-size: 0.64rem;
   }
 
-  .nav-item svg {
+  .mobile-nav .nav-item svg {
     width: 16px;
     height: 16px;
     flex-basis: 16px;
