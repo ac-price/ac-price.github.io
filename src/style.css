@@ -1487,8 +1487,13 @@ a {
   }
 
   .table-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     padding: 14px 0;
+  }
+
+  .table-row > .product-main {
+    grid-column: 1 / -1;
   }
 
   .table-row > :not(.product-main) {
@@ -1496,6 +1501,10 @@ a {
     flex-direction: column;
     gap: 4px;
     align-items: flex-start;
+  }
+
+  .table-row > :nth-child(4) {
+    grid-column: 1 / -1;
   }
 
   .table-row > :nth-child(2)::before,
@@ -1624,8 +1633,7 @@ a {
     flex-basis: 16px;
   }
 
-  .stats-bar,
-  .analytics-row__stats {
+  .stats-bar {
     grid-template-columns: 1fr;
   }
 
