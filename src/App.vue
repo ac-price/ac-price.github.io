@@ -2,12 +2,18 @@
 import AnalyticsMiniChart from './components/AnalyticsMiniChart.vue'
 import {
   Bell,
+  BellRing,
   ChartNoAxesColumn,
+  Check,
   ChevronDown,
   CircleDollarSign,
   House,
+  MessageCircleMore,
+  Monitor,
   Settings,
+  ShieldCheck,
   ShoppingBag,
+  SlidersHorizontal,
   TrendingUp,
 } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -39,8 +45,23 @@ const isAddModalOpen = ref(false)
 const addProductUrl = ref('')
 const isSubmittingProduct = ref(false)
 const addProductError = ref('')
+const notificationChannel = ref('telegram')
+const notificationRule = ref('every_change')
+const notificationAmount = ref(5000)
+const browserSoundEnabled = ref(true)
+const quietHoursEnabled = ref(false)
+const outOfStockAlerts = ref(true)
+const digestEnabled = ref(false)
+const notificationSelectOpen = ref(false)
 
 let telegramScript = null
+
+const notificationOptions = [
+  { value: 'every_change', label: 'При каждом изменении', hint: 'Сигнал сразу после любой смены цены' },
+  { value: 'drop_only', label: 'Только при снижении', hint: 'Без уведомлений о росте цены' },
+  { value: 'amount_change', label: 'При изменении на сумму', hint: 'Срабатывает только после заданного порога' },
+  { value: 'daily_digest', label: 'Сводка раз в день', hint: 'Один ежедневный отчёт со всеми изменениями' },
+]
 
 const hasTelegramWidget = computed(() => Boolean(botName))
 const isAuthenticated = computed(() => Boolean(session.value))
@@ -52,10 +73,10 @@ const priceDropsToday = computed(
     products.value.filter((item) => {
       const checked = new Date(item.last_checked_at)
       const now = new Date()
-      return getTrackedChange(item) < 0 && checked.toDateString() === now.toDateString()
+      return item.last_price_change < 0 && checked.toDateString() === now.toDateString()
     }).length,
 )
-const sentNotifications = computed(() => products.value.filter((item) => getTrackedChange(item) < 0).length)
+const sentNotifications = computed(() => products.value.filter((item) => item.last_price_change < 0).length)
 const totalSaved = computed(() =>
   products.value.reduce((sum, item) => sum + Math.max((item.initial_price ?? item.current_price) - item.current_price, 0), 0),
 )
@@ -71,6 +92,7 @@ const latestCheckedAt = computed(() => {
   if (!products.value.length) {
     return null
   }
+
   return [...products.value]
     .map((item) => item.last_checked_at)
     .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0]
@@ -91,8 +113,8 @@ const analyticsSummary = computed(() => {
   const activeDrops = items.filter((item) => item.current_price <= item.min_price).length
   const averageVolatility = items.length
     ? items.reduce((sum, item) => {
-        const base = item.initial_price || item.current_price || 1
-        return sum + ((Math.abs(getTrackedChange(item)) / base) * 100)
+        const base = item.min_price || item.current_price || 1
+        return sum + ((Math.abs(item.current_price - item.min_price) / base) * 100)
       }, 0) / items.length
     : 0
 
@@ -100,21 +122,37 @@ const analyticsSummary = computed(() => {
     { title: 'Товаров в аналитике', value: String(items.length) },
     { title: 'Точек истории', value: String(pointsCount) },
     { title: 'На минимуме сейчас', value: String(activeDrops) },
-    { title: 'Среднее изменение', value: `${averageVolatility.toFixed(1)}%` },
+    { title: 'Средняя волатильность', value: `${averageVolatility.toFixed(1)}%` },
   ]
 })
 
 const analyticsRows = computed(() =>
-  analyticsProducts.value.map((item) => ({
-    ...item,
-    historyCount: item.history?.length ?? 0,
-  })),
+  analyticsProducts.value.map((item) => {
+    const history = item.history ?? []
+
+    return {
+      ...item,
+      historyCount: history.length,
+    }
+  }),
+)
+
+const selectedNotificationOption = computed(
+  () => notificationOptions.find((item) => item.value === notificationRule.value) ?? notificationOptions[0],
+)
+
+const amountChangeLabel = computed(() => formatPrice(notificationAmount.value))
+
+const notificationFact = computed(() =>
+  notificationChannel.value === 'telegram'
+    ? 'Уведомления будут приходить в Telegram сразу после очередной проверки цены.'
+    : 'Браузерные push-уведомления работают в том браузере, где вы разрешили показ уведомлений.',
 )
 
 const navItems = [
   { key: 'home', label: 'Главная', icon: House },
   { key: 'analytics', label: 'Аналитика', icon: ChartNoAxesColumn },
-  { key: 'notifications', label: 'Уведомления', icon: Bell, disabled: true },
+  { key: 'notifications', label: 'Уведомления', icon: Bell },
   { key: 'settings', label: 'Настройки', icon: Settings, disabled: true },
 ]
 
@@ -411,6 +449,7 @@ function logout() {
   productsError.value = ''
   analyticsError.value = ''
   currentPage.value = 'home'
+  notificationSelectOpen.value = false
   clearUrlState()
 }
 
@@ -418,12 +457,18 @@ function toggleProfileMenu() {
   profileMenuOpen.value = !profileMenuOpen.value
 }
 
+function selectNotificationRule(value) {
+  notificationRule.value = value
+  notificationSelectOpen.value = false
+}
+
 async function openPage(pageKey) {
-  if (pageKey === 'notifications' || pageKey === 'settings') {
+  if (pageKey === 'settings') {
     return
   }
   currentPage.value = pageKey
   profileMenuOpen.value = false
+  notificationSelectOpen.value = false
   if (pageKey === 'analytics' && canAccessAnalytics.value && !analyticsProducts.value.length) {
     await loadAnalytics()
   }
@@ -570,7 +615,9 @@ onBeforeUnmount(() => {
         <header class="dashboard-header">
           <div>
             <h1 class="dashboard-title">Мои товары</h1>
-            <p class="dashboard-subtitle">Отслеживайте цены на товары и получайте уведомления о снижении цен</p>
+            <p class="dashboard-subtitle">
+              Отслеживайте цены на товары и получайте уведомления о снижении цен
+            </p>
           </div>
           <button type="button" class="add-button" @click="openAddModal">Добавить товар</button>
         </header>
@@ -642,7 +689,11 @@ onBeforeUnmount(() => {
                   {{ getTrackedChange(item) < 0 ? '↓' : getTrackedChange(item) > 0 ? '↑' : '•' }}
                   {{ formatPrice(Math.abs(getTrackedChange(item))) }}
                 </strong>
-                <p>({{ getTrackedChangePercent(item) }}%)</p>
+                <p>
+                  {{
+                    `(${getTrackedChangePercent(item)}%)`
+                  }}
+                </p>
               </div>
             </article>
           </div>
@@ -653,7 +704,9 @@ onBeforeUnmount(() => {
         <header class="dashboard-header">
           <div>
             <h1 class="dashboard-title">Аналитика</h1>
-            <p class="dashboard-subtitle">Динамика цен, глубина истории и состояние каждого отслеживаемого товара</p>
+            <p class="dashboard-subtitle">
+              Динамика цен, глубина истории и состояние каждого отслеживаемого товара
+            </p>
           </div>
         </header>
 
