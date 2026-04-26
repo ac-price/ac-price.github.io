@@ -954,7 +954,9 @@ onBeforeUnmount(() => {
                   <a :href="item.url" target="_blank" rel="noreferrer">{{ item.url }}</a>
                 </div>
               </div>
-              <strong class="mono">{{ formatPrice(item.current_price) }}</strong>
+              <div>
+                <strong class="mono">{{ formatPrice(item.current_price) }}</strong>
+              </div>
               <div>
                 <strong class="price-min mono">{{ formatPrice(item.min_price) }}</strong>
                 <p>{{ formatShortDate(item.min_price_recorded_at) }}</p>
