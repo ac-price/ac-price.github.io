@@ -86,7 +86,12 @@ const priceDropsToday = computed(
 )
 const sentNotifications = computed(() => products.value.filter((item) => item.last_price_change < 0).length)
 const totalSaved = computed(() =>
-  products.value.reduce((sum, item) => sum + Math.max((item.initial_price ?? item.current_price) - item.current_price, 0), 0),
+  products.value.reduce((sum, item) => {
+    if (!item.is_available) {
+      return sum
+    }
+    return sum + Math.max((item.initial_price ?? item.current_price) - item.current_price, 0)
+  }, 0),
 )
 
 const stats = computed(() => [
@@ -117,13 +122,14 @@ const productsUpdateHint = computed(() => {
 
 const analyticsSummary = computed(() => {
   const items = analyticsProducts.value
+  const availableItems = items.filter((item) => item.is_available)
   const pointsCount = items.reduce((sum, item) => sum + item.history.length, 0)
-  const activeDrops = items.filter((item) => item.current_price <= item.min_price).length
-  const averageVolatility = items.length
-    ? items.reduce((sum, item) => {
+  const activeDrops = availableItems.filter((item) => item.current_price <= item.min_price).length
+  const averageVolatility = availableItems.length
+    ? availableItems.reduce((sum, item) => {
         const base = item.min_price || item.current_price || 1
         return sum + ((Math.abs(item.current_price - item.min_price) / base) * 100)
-      }, 0) / items.length
+      }, 0) / availableItems.length
     : 0
 
   return [
@@ -215,6 +221,10 @@ function formatPrice(value) {
   return `${new Intl.NumberFormat('ru-RU').format(value)} ₸`
 }
 
+function getOutOfStockLabel() {
+  return 'Пока нет в наличии'
+}
+
 function formatShortDate(value) {
   return new Intl.DateTimeFormat('ru-RU', {
     day: 'numeric',
@@ -238,10 +248,16 @@ function formatRelativeTime(value) {
 }
 
 function getTrackedChange(item) {
+  if (!item.is_available) {
+    return 0
+  }
   return (item.current_price ?? 0) - (item.initial_price ?? item.current_price ?? 0)
 }
 
 function getTrackedChangePercent(item) {
+  if (!item.is_available) {
+    return '0.00'
+  }
   const base = item.initial_price ?? 0
   if (!base) {
     return '0.00'
@@ -1078,22 +1094,29 @@ onBeforeUnmount(() => {
                 </div>
               </div>
               <div>
-                <strong class="mono">{{ formatPrice(item.current_price) }}</strong>
+                <strong v-if="item.is_available" class="mono">{{ formatPrice(item.current_price) }}</strong>
+                <strong v-else class="mono price-unavailable">{{ getOutOfStockLabel() }}</strong>
               </div>
               <div>
-                <strong class="price-min mono">{{ formatPrice(item.min_price) }}</strong>
-                <p>{{ formatShortDate(item.min_price_recorded_at) }}</p>
+                <template v-if="item.is_available">
+                  <strong class="price-min mono">{{ formatPrice(item.min_price) }}</strong>
+                  <p>{{ formatShortDate(item.min_price_recorded_at) }}</p>
+                </template>
+                <strong v-else class="mono price-unavailable">{{ getOutOfStockLabel() }}</strong>
               </div>
               <div>
-                <strong class="price-change mono" :class="{ down: getTrackedChange(item) < 0 }">
+                <template v-if="item.is_available">
+                  <strong class="price-change mono" :class="{ down: getTrackedChange(item) < 0 }">
                   {{ getTrackedChange(item) < 0 ? '↓' : getTrackedChange(item) > 0 ? '↑' : '•' }}
                   {{ formatPrice(Math.abs(getTrackedChange(item))) }}
-                </strong>
-                <p>
-                  {{
-                    `(${getTrackedChangePercent(item)}%)`
-                  }}
-                </p>
+                  </strong>
+                  <p>
+                    {{
+                      `(${getTrackedChangePercent(item)}%)`
+                    }}
+                  </p>
+                </template>
+                <strong v-else class="mono price-unavailable">{{ getOutOfStockLabel() }}</strong>
               </div>
               <div class="product-row-actions">
                 <button
@@ -1172,22 +1195,25 @@ onBeforeUnmount(() => {
               <div class="analytics-row__stats">
                 <div>
                   <span>При добавлении</span>
-                  <strong>{{ formatPrice(item.initial_price) }}</strong>
+                  <strong>{{ item.historyCount ? formatPrice(item.initial_price) : getOutOfStockLabel() }}</strong>
                 </div>
                 <div>
                   <span>Текущая цена</span>
-                  <strong>{{ formatPrice(item.current_price) }}</strong>
+                  <strong>{{ item.is_available ? formatPrice(item.current_price) : getOutOfStockLabel() }}</strong>
                 </div>
                 <div>
                   <span>Мин/Макс</span>
-                  <strong class="price-min">{{ formatPrice(item.min_price) }} / {{ formatPrice(item.max_price) }}</strong>
+                  <strong class="price-min">
+                    {{ item.historyCount ? `${formatPrice(item.min_price)} / ${formatPrice(item.max_price)}` : getOutOfStockLabel() }}
+                  </strong>
                 </div>
                 <div>
                   <span>Изменение</span>
-                  <strong :class="['price-change', { down: getTrackedChange(item) < 0 }]">
+                  <strong v-if="item.is_available" :class="['price-change', { down: getTrackedChange(item) < 0 }]">
                     {{ getTrackedChange(item) < 0 ? '↓' : getTrackedChange(item) > 0 ? '↑' : '•' }}
                     {{ formatPrice(Math.abs(getTrackedChange(item))) }}
                   </strong>
+                  <strong v-else class="price-unavailable">{{ getOutOfStockLabel() }}</strong>
                 </div>
               </div>
             </article>
