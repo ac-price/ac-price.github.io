@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   SlidersHorizontal,
+  Trash2,
   TrendingUp,
 } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -37,6 +38,10 @@ const notificationSelectRef = ref(null)
 const products = ref([])
 const isProductsLoading = ref(false)
 const productsError = ref('')
+const deletingProductId = ref(null)
+const swipedProductId = ref(null)
+const swipeStartX = ref(0)
+const swipeOffsetX = ref(0)
 
 const analyticsProducts = ref([])
 const isAnalyticsLoading = ref(false)
@@ -449,6 +454,103 @@ async function submitProduct() {
   }
 }
 
+async function deleteProduct(productId) {
+  if (!session.value?.token || deletingProductId.value === productId) {
+    return
+  }
+
+  deletingProductId.value = productId
+  productsError.value = ''
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/v1/products/${productId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    })
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}))
+      throw new Error(payload.detail || 'Не удалось удалить товар.')
+    }
+
+    products.value = products.value.filter((item) => item.id !== productId)
+    analyticsProducts.value = analyticsProducts.value.filter((item) => item.id !== productId)
+    swipedProductId.value = null
+    swipeOffsetX.value = 0
+
+    if (profile.value?.products_used) {
+      profile.value.products_used = Math.max(profile.value.products_used - 1, 0)
+    }
+  } catch (error) {
+    productsError.value = error.message || 'Не удалось удалить товар.'
+  } finally {
+    deletingProductId.value = null
+  }
+}
+
+function isMobileViewport() {
+  return typeof window !== 'undefined' && window.innerWidth <= 640
+}
+
+function handleProductTouchStart(productId, event) {
+  if (!isMobileViewport()) {
+    return
+  }
+
+  swipedProductId.value = swipedProductId.value === productId ? productId : null
+  swipeStartX.value = event.changedTouches[0]?.clientX ?? 0
+  swipeOffsetX.value = swipedProductId.value === productId ? -88 : 0
+}
+
+function handleProductTouchMove(productId, event) {
+  if (!isMobileViewport()) {
+    return
+  }
+
+  const currentX = event.changedTouches[0]?.clientX ?? swipeStartX.value
+  const deltaX = currentX - swipeStartX.value
+
+  if (deltaX < 0) {
+    swipedProductId.value = productId
+    swipeOffsetX.value = Math.max(deltaX, -88)
+  } else if (swipedProductId.value === productId) {
+    swipeOffsetX.value = Math.min(-88 + deltaX, 0)
+  }
+}
+
+function handleProductTouchEnd(productId) {
+  if (!isMobileViewport()) {
+    return
+  }
+
+  if (swipedProductId.value !== productId) {
+    swipeOffsetX.value = 0
+    return
+  }
+
+  if (swipeOffsetX.value <= -44) {
+    swipedProductId.value = productId
+    swipeOffsetX.value = -88
+  } else {
+    swipedProductId.value = null
+    swipeOffsetX.value = 0
+  }
+}
+
+function resetProductSwipe() {
+  swipedProductId.value = null
+  swipeOffsetX.value = 0
+}
+
+function getProductRowStyle(productId) {
+  if (swipedProductId.value !== productId) {
+    return {}
+  }
+
+  return {
+    transform: `translateX(${swipeOffsetX.value}px)`,
+  }
+}
+
 function cleanupTelegramWidget() {
   if (telegramScript?.parentNode) {
     telegramScript.parentNode.removeChild(telegramScript)
@@ -505,6 +607,7 @@ async function logout() {
   analyticsError.value = ''
   currentPage.value = 'home'
   notificationSelectOpen.value = false
+  resetProductSwipe()
   clearUrlState()
 }
 
@@ -541,6 +644,7 @@ async function openPage(pageKey) {
   currentPage.value = pageKey
   profileMenuOpen.value = false
   notificationSelectOpen.value = false
+  resetProductSwipe()
   if (pageKey === 'analytics' && canAccessAnalytics.value && !analyticsProducts.value.length) {
     await loadAnalytics()
   }
@@ -937,8 +1041,27 @@ onBeforeUnmount(() => {
             <div v-else-if="!products.length" class="empty-state">
               Пока нет товаров. Нажмите «Добавить товар» и вставьте ссылку на Kaspi.
             </div>
-            <article v-for="item in products" :key="item.id" class="table-row">
-              <div class="product-main">
+            <article
+              v-for="item in products"
+              :key="item.id"
+              class="table-row"
+              :class="{ 'table-row--swiped': swipedProductId === item.id }"
+              @touchstart.passive="handleProductTouchStart(item.id, $event)"
+              @touchmove="handleProductTouchMove(item.id, $event)"
+              @touchend="handleProductTouchEnd(item.id)"
+              @touchcancel="resetProductSwipe"
+            >
+              <button
+                type="button"
+                class="table-row__delete-action"
+                :disabled="deletingProductId === item.id"
+                @click="deleteProduct(item.id)"
+              >
+                <Trash2 aria-hidden="true" />
+                <span>{{ deletingProductId === item.id ? 'Удаление...' : 'Удалить' }}</span>
+              </button>
+              <div class="table-row__content" :style="getProductRowStyle(item.id)">
+                <div class="product-main">
                 <div class="product-thumb">
                   <img
                     v-if="item.image_url"
@@ -953,6 +1076,14 @@ onBeforeUnmount(() => {
                   <strong :title="item.product_name">{{ smartShortenProductName(item.product_name) }}</strong>
                   <a :href="item.url" target="_blank" rel="noreferrer">{{ item.url }}</a>
                 </div>
+                <button
+                  type="button"
+                  class="product-delete-button"
+                  :disabled="deletingProductId === item.id"
+                  @click="deleteProduct(item.id)"
+                >
+                  <Trash2 aria-hidden="true" />
+                </button>
               </div>
               <div>
                 <strong class="mono">{{ formatPrice(item.current_price) }}</strong>
@@ -971,6 +1102,7 @@ onBeforeUnmount(() => {
                     `(${getTrackedChangePercent(item)}%)`
                   }}
                 </p>
+              </div>
               </div>
             </article>
           </div>

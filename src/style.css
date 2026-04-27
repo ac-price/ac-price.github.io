@@ -891,8 +891,49 @@ a {
 }
 
 .table-row {
-  padding: 18px;
+  display: block;
+  position: relative;
+  overflow: hidden;
   border-bottom: 1px solid rgba(134, 151, 175, 0.1);
+}
+
+.table-row__content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(300px, 1.7fr) repeat(3, minmax(120px, 1fr));
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(14, 21, 34, 0.95), rgba(8, 13, 23, 0.9));
+  transition: transform 180ms ease;
+  will-change: transform;
+}
+
+.table-row__delete-action {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 88px;
+  border: 0;
+  background: linear-gradient(180deg, #ff6f6f, #d84f4f);
+  color: #fff5f5;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.78rem;
+}
+
+.table-row__delete-action svg,
+.product-delete-button svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .empty-state {
@@ -917,6 +958,7 @@ a {
   min-width: 0;
   display: grid;
   gap: 4px;
+  flex: 1;
 }
 
 .product-thumb {
@@ -961,6 +1003,26 @@ a {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+}
+
+.product-delete-button {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 111, 111, 0.2);
+  background: rgba(255, 111, 111, 0.08);
+  color: #ff8d8d;
+  cursor: pointer;
+}
+
+.product-delete-button:disabled,
+.table-row__delete-action:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .mono {
@@ -1267,6 +1329,11 @@ a {
     grid-template-columns: 1fr;
     gap: 10px;
   }
+
+  .table-row__content {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1487,52 +1554,64 @@ a {
   }
 
   .table-row {
+    gap: 0;
+  }
+
+  .table-row__content {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
     gap: 12px;
     padding: 14px 0;
   }
 
-  .table-row > .product-main {
+  .table-row__delete-action {
+    display: inline-flex;
+  }
+
+  .table-row__content > .product-main {
     grid-column: 1 / -1;
   }
 
-  .table-row > :not(.product-main) {
+  .table-row__content > :not(.product-main) {
     display: flex;
     flex-direction: column;
     gap: 4px;
     align-items: flex-start;
   }
 
-  .table-row > :nth-child(4) {
+  .table-row__content > :nth-child(4) {
     grid-column: 1 / 2;
     align-items: flex-start;
     text-align: left;
     justify-self: stretch;
   }
 
-  .table-row > :nth-child(2)::before,
-  .table-row > :nth-child(3)::before,
-  .table-row > :nth-child(4)::before {
+  .table-row__content > :nth-child(2)::before,
+  .table-row__content > :nth-child(3)::before,
+  .table-row__content > :nth-child(4)::before {
     color: var(--muted);
     font-size: 0.76rem;
   }
 
-  .table-row > :nth-child(2)::before {
+  .table-row__content > :nth-child(2)::before {
     content: 'Текущая цена';
   }
 
-  .table-row > :nth-child(3)::before {
+  .table-row__content > :nth-child(3)::before {
     content: 'Минимальная цена';
   }
 
-  .table-row > :nth-child(4)::before {
+  .table-row__content > :nth-child(4)::before {
     content: 'Изменение';
   }
 
   .product-main {
     align-items: flex-start;
     gap: 12px;
+  }
+
+  .product-delete-button {
+    display: none;
   }
 
   .product-thumb {
