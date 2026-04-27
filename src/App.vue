@@ -962,7 +962,7 @@ onBeforeUnmount(() => {
           </button>
         </nav>
 
-        <div class="premium-card">
+        <div v-if="profile?.tariff === 'free'" class="premium-card">
           <p class="premium-card__title">Премиум</p>
           <p class="premium-card__text">Больше отслеживаний и расширенная аналитика</p>
           <button type="button" class="premium-card__button">Узнать больше</button>
