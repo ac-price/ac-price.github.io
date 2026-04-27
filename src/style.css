@@ -901,7 +901,7 @@ a {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(300px, 1.7fr) repeat(3, minmax(120px, 1fr));
+  grid-template-columns: minmax(300px, 1.7fr) repeat(3, minmax(120px, 1fr)) 48px;
   gap: 18px;
   align-items: center;
   padding: 18px;
@@ -923,6 +923,7 @@ a {
   flex-direction: column;
   gap: 8px;
   font-size: 0.78rem;
+  z-index: 0;
 }
 
 .table-row__delete-action svg,
@@ -1023,6 +1024,12 @@ a {
 .table-row__delete-action:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.product-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .mono {
@@ -1561,7 +1568,7 @@ a {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
     gap: 12px;
-    padding: 14px 0;
+    padding: 14px;
   }
 
   .table-row__delete-action {
@@ -1570,6 +1577,10 @@ a {
 
   .table-row__content > .product-main {
     grid-column: 1 / -1;
+  }
+
+  .table-row__content > .product-row-actions {
+    display: none;
   }
 
   .table-row__content > :not(.product-main) {

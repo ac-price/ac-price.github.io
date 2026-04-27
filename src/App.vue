@@ -1076,14 +1076,6 @@ onBeforeUnmount(() => {
                   <strong :title="item.product_name">{{ smartShortenProductName(item.product_name) }}</strong>
                   <a :href="item.url" target="_blank" rel="noreferrer">{{ item.url }}</a>
                 </div>
-                <button
-                  type="button"
-                  class="product-delete-button"
-                  :disabled="deletingProductId === item.id"
-                  @click="deleteProduct(item.id)"
-                >
-                  <Trash2 aria-hidden="true" />
-                </button>
               </div>
               <div>
                 <strong class="mono">{{ formatPrice(item.current_price) }}</strong>
@@ -1102,6 +1094,16 @@ onBeforeUnmount(() => {
                     `(${getTrackedChangePercent(item)}%)`
                   }}
                 </p>
+              </div>
+              <div class="product-row-actions">
+                <button
+                  type="button"
+                  class="product-delete-button"
+                  :disabled="deletingProductId === item.id"
+                  @click="deleteProduct(item.id)"
+                >
+                  <Trash2 aria-hidden="true" />
+                </button>
               </div>
               </div>
             </article>
