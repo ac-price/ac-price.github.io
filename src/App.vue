@@ -157,10 +157,22 @@ const productsUpdateHint = computed(() => {
   return `${schedule}${lastCheck}`
 })
 
+const analyticsRows = computed(() =>
+  analyticsProducts.value.map((item) => {
+    const dailyHistory = aggregateHistoryByDay(item.history ?? [])
+
+    return {
+      ...item,
+      dailyHistory,
+      historyCount: dailyHistory.length,
+    }
+  }),
+)
+
 const analyticsSummary = computed(() => {
-  const items = analyticsProducts.value
+  const items = analyticsRows.value
   const availableItems = items.filter((item) => item.is_available)
-  const pointsCount = items.reduce((sum, item) => sum + item.history.length, 0)
+  const pointsCount = items.reduce((sum, item) => sum + item.historyCount, 0)
   const activeDrops = availableItems.filter((item) => item.current_price <= item.min_price).length
   const averageVolatility = availableItems.length
     ? availableItems.reduce((sum, item) => {
@@ -171,22 +183,11 @@ const analyticsSummary = computed(() => {
 
   return [
     { title: 'Товаров в аналитике', value: String(items.length) },
-    { title: 'Точек истории', value: String(pointsCount) },
+    { title: 'Дней в истории', value: String(pointsCount) },
     { title: 'На минимуме сейчас', value: String(activeDrops) },
     { title: 'Средняя волатильность', value: `${averageVolatility.toFixed(1)}%` },
   ]
 })
-
-const analyticsRows = computed(() =>
-  analyticsProducts.value.map((item) => {
-    const history = item.history ?? []
-
-    return {
-      ...item,
-      historyCount: history.length,
-    }
-  }),
-)
 
 const selectedNotificationOption = computed(
   () => notificationOptions.find((item) => item.value === notificationRule.value) ?? notificationOptions[0],
@@ -282,6 +283,34 @@ function formatRelativeTime(value) {
   }
   const diffDays = Math.round(diffHours / 24)
   return `${diffDays} дн назад`
+}
+
+function getHistoryDayKey(value) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Almaty',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(value))
+}
+
+function aggregateHistoryByDay(history) {
+  const days = new Map()
+
+  for (const point of history) {
+    if (!point?.recorded_at) {
+      continue
+    }
+
+    const dayKey = getHistoryDayKey(point.recorded_at)
+    const currentPoint = days.get(dayKey)
+
+    if (!currentPoint || new Date(point.recorded_at).getTime() > new Date(currentPoint.recorded_at).getTime()) {
+      days.set(dayKey, point)
+    }
+  }
+
+  return [...days.values()].sort((left, right) => new Date(left.recorded_at).getTime() - new Date(right.recorded_at).getTime())
 }
 
 function getTrackedChange(item) {
@@ -1217,14 +1246,14 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="analytics-row__copy">
                   <strong :title="item.product_name">{{ smartShortenProductName(item.product_name, 48) }}</strong>
-                  <span>{{ item.historyCount }} точек истории</span>
+                  <span>{{ item.historyCount }} дней в истории</span>
                 </div>
               </div>
 
               <div class="analytics-row__chart">
                 <AnalyticsMiniChart
                   v-if="item.historyCount"
-                  :history="item.history"
+                  :history="item.dailyHistory"
                   :format-price="formatPrice"
                   :format-short-date="formatShortDate"
                 />
