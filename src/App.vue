@@ -103,13 +103,13 @@ const netCartChange = computed(() =>
 )
 
 const stats = computed(() => [
-  { icon: 'bag', value: String(trackedCount.value), label: '??????? ?????????????', tone: 'green' },
-  { icon: 'trend', value: String(priceDropsToday.value), label: '???????? ???????', tone: 'violet' },
-  { icon: 'coin', value: formatPrice(totalSaved.value), label: '???????????? ???????????', tone: 'gold' },
+  { icon: 'bag', value: String(trackedCount.value), label: 'Товаров отслеживается', tone: 'green' },
+  { icon: 'trend', value: String(priceDropsToday.value), label: 'Снижений сегодня', tone: 'violet' },
+  { icon: 'coin', value: formatPrice(totalSaved.value), label: 'Потенциально сэкономлено', tone: 'gold' },
   {
     icon: 'chart',
     value: `${netCartChange.value > 0 ? '+' : netCartChange.value < 0 ? '-' : ''}${formatPrice(Math.abs(netCartChange.value))}`,
-    label: netCartChange.value > 0 ? '????????? ??????' : netCartChange.value < 0 ? '???????? ???????' : '??? ?????????',
+    label: netCartChange.value > 0 ? 'Переплата сейчас' : netCartChange.value < 0 ? 'Снижение корзины' : 'Без изменений',
     tone: netCartChange.value > 0 ? 'red' : netCartChange.value < 0 ? 'green' : 'blue',
   },
 ])
