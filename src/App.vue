@@ -1026,7 +1026,7 @@ onBeforeUnmount(() => {
         </header>
 
         <section class="stats-bar panel">
-          <article v-for="item in stats" :key="item.label" class="stat-tile">
+          <article v-for="item in stats" :key="item.label" class="stat-tile" :class="{ 'stat-tile--dual': item.icon === 'coin' }">
             <div class="stat-tile__icon" :class="`tone-${item.tone}`">
               <ShoppingBag v-if="item.icon === 'bag'" aria-hidden="true" />
               <TrendingUp v-else-if="item.icon === 'trend'" aria-hidden="true" />

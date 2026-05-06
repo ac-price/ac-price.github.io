@@ -506,6 +506,26 @@ a {
   color: #48e27c;
 }
 
+.stat-tile--dual .stat-tile__icon {
+  width: 46px;
+  min-width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+}
+
+.stat-tile--dual .stat-metric-stack {
+  gap: 4px;
+}
+
+.stat-tile--dual .stat-metric-stack span {
+  line-height: 1.05;
+}
+
+.stat-tile--dual .stat-label-stack {
+  gap: 4px;
+  font-size: 0.82rem;
+}
+
 .stat-tile p {
   margin: 0;
   color: var(--muted);
