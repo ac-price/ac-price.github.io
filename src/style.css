@@ -474,6 +474,11 @@ a {
   color: #73b6ff;
 }
 
+.tone-red {
+  background: rgba(255, 107, 107, 0.12);
+  color: #ff8d8d;
+}
+
 .tone-gold {
   background: rgba(240, 194, 79, 0.12);
   color: #f6d36e;
