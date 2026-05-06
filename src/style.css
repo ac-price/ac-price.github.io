@@ -485,6 +485,27 @@ a {
   font-size: 1.05rem;
 }
 
+.stat-metric-stack,
+.stat-label-stack {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.stat-metric-divider {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.stat-metric-secondary.positive {
+  color: var(--danger);
+}
+
+.stat-metric-secondary.negative {
+  color: #48e27c;
+}
+
 .stat-tile p {
   margin: 0;
   color: var(--muted);

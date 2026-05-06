@@ -93,6 +93,14 @@ const totalSaved = computed(() =>
     return sum + Math.max((item.initial_price ?? item.current_price) - item.current_price, 0)
   }, 0),
 )
+const netCartChange = computed(() =>
+  products.value.reduce((sum, item) => {
+    if (!item.is_available) {
+      return sum
+    }
+    return sum + ((item.current_price ?? 0) - (item.initial_price ?? item.current_price ?? 0))
+  }, 0),
+)
 
 const stats = computed(() => [
   { icon: 'bag', value: String(trackedCount.value), label: 'Товаров отслеживается', tone: 'green' },
@@ -1026,8 +1034,20 @@ onBeforeUnmount(() => {
               <CircleDollarSign v-else aria-hidden="true" />
             </div>
             <div>
-              <strong>{{ item.value }}</strong>
-              <p>{{ item.label }}</p>
+              <strong v-if="item.icon === 'coin'" class="stat-metric-stack">
+                <span>{{ item.value }}</span>
+                <span class="stat-metric-divider">/</span>
+                <span :class="['stat-metric-secondary', { positive: netCartChange > 0, negative: netCartChange < 0 }]">
+                  {{ netCartChange > 0 ? '+' : netCartChange < 0 ? '-' : '' }}{{ formatPrice(Math.abs(netCartChange)) }}
+                </span>
+              </strong>
+              <strong v-else>{{ item.value }}</strong>
+              <p v-if="item.icon === 'coin'" class="stat-label-stack">
+                <span>{{ item.label }}</span>
+                <span>/</span>
+                <span>Чистое изменение</span>
+              </p>
+              <p v-else>{{ item.label }}</p>
             </div>
           </article>
         </section>
