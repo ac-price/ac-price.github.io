@@ -103,10 +103,10 @@ const netCartChange = computed(() =>
 )
 
 const stats = computed(() => [
-  { icon: 'bag', value: String(trackedCount.value), label: 'Товаров отслеживается', tone: 'green' },
-  { icon: 'trend', value: String(priceDropsToday.value), label: 'Снижений сегодня', tone: 'violet' },
-  { icon: 'bell', value: String(sentNotifications.value), label: 'Снижений в истории', tone: 'blue' },
-  { icon: 'coin', value: formatPrice(totalSaved.value), label: 'Потенциально сэкономлено', tone: 'gold' },
+  { icon: 'bag', value: String(trackedCount.value), label: '??????? ?????????????', tone: 'green' },
+  { icon: 'trend', value: String(priceDropsToday.value), label: '???????? ???????', tone: 'violet' },
+  { icon: 'coin', value: formatPrice(totalSaved.value), label: '???????????? ???????????', tone: 'gold' },
+  { icon: 'chart', value: `${netCartChange.value > 0 ? '+' : netCartChange.value < 0 ? '-' : ''}${formatPrice(Math.abs(netCartChange.value))}`, label: '?????? ?????????', tone: 'blue' },
 ])
 
 const latestCheckedAt = computed(() => {
@@ -1026,28 +1026,16 @@ onBeforeUnmount(() => {
         </header>
 
         <section class="stats-bar panel">
-          <article v-for="item in stats" :key="item.label" class="stat-tile" :class="{ 'stat-tile--dual': item.icon === 'coin' }">
+          <article v-for="item in stats" :key="item.label" class="stat-tile">
             <div class="stat-tile__icon" :class="`tone-${item.tone}`">
               <ShoppingBag v-if="item.icon === 'bag'" aria-hidden="true" />
               <TrendingUp v-else-if="item.icon === 'trend'" aria-hidden="true" />
-              <Bell v-else-if="item.icon === 'bell'" aria-hidden="true" />
+              <ChartNoAxesColumn v-else-if="item.icon === 'chart'" aria-hidden="true" />
               <CircleDollarSign v-else aria-hidden="true" />
             </div>
             <div>
-              <strong v-if="item.icon === 'coin'" class="stat-metric-stack">
-                <span>{{ item.value }}</span>
-                <span class="stat-metric-divider">/</span>
-                <span :class="['stat-metric-secondary', { positive: netCartChange > 0, negative: netCartChange < 0 }]">
-                  {{ netCartChange > 0 ? '+' : netCartChange < 0 ? '-' : '' }}{{ formatPrice(Math.abs(netCartChange)) }}
-                </span>
-              </strong>
-              <strong v-else>{{ item.value }}</strong>
-              <p v-if="item.icon === 'coin'" class="stat-label-stack">
-                <span>{{ item.label }}</span>
-                <span>/</span>
-                <span>Чистое изменение</span>
-              </p>
-              <p v-else>{{ item.label }}</p>
+              <strong>{{ item.value }}</strong>
+              <p>{{ item.label }}</p>
             </div>
           </article>
         </section>
