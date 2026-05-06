@@ -103,13 +103,37 @@ const netCartChange = computed(() =>
 )
 
 const stats = computed(() => [
-  { icon: 'bag', value: String(trackedCount.value), label: 'Товаров отслеживается', tone: 'green' },
-  { icon: 'trend', value: String(priceDropsToday.value), label: 'Снижений сегодня', tone: 'violet' },
-  { icon: 'coin', value: formatPrice(totalSaved.value), label: 'Потенциально сэкономлено', tone: 'gold' },
+  {
+    icon: 'bag',
+    value: String(trackedCount.value),
+    label: 'Товаров отслеживается',
+    hint: 'Количество товаров, которые сейчас добавлены в отслеживание.',
+    tone: 'green',
+  },
+  {
+    icon: 'trend',
+    value: String(priceDropsToday.value),
+    label: 'Снижений сегодня',
+    hint: 'Сколько из ваших товаров подешевели за сегодняшний день.',
+    tone: 'violet',
+  },
+  {
+    icon: 'coin',
+    value: formatPrice(totalSaved.value),
+    label: 'Потенциально сэкономлено',
+    hint: 'Сумма экономии по товарам, где текущая цена ниже цены на момент добавления.',
+    tone: 'gold',
+  },
   {
     icon: 'chart',
     value: `${netCartChange.value > 0 ? '+' : netCartChange.value < 0 ? '-' : ''}${formatPrice(Math.abs(netCartChange.value))}`,
     label: netCartChange.value > 0 ? 'Переплата сейчас' : netCartChange.value < 0 ? 'Снижение корзины' : 'Без изменений',
+    hint:
+      netCartChange.value > 0
+        ? 'На сколько текущая корзина дороже относительно цен на момент добавления.'
+        : netCartChange.value < 0
+          ? 'На сколько текущая стоимость корзины ниже стартовой.'
+          : 'Суммарная стоимость корзины не изменилась с момента добавления.',
     tone: netCartChange.value > 0 ? 'red' : netCartChange.value < 0 ? 'green' : 'blue',
   },
 ])
@@ -1038,10 +1062,11 @@ onBeforeUnmount(() => {
               <ChartNoAxesColumn v-else-if="item.icon === 'chart'" aria-hidden="true" />
               <CircleDollarSign v-else aria-hidden="true" />
             </div>
-            <div>
+            <div class="stat-tile__body">
               <strong>{{ item.value }}</strong>
               <p>{{ item.label }}</p>
             </div>
+            <span class="stat-tile__tooltip" role="tooltip">{{ item.hint }}</span>
           </article>
         </section>
 

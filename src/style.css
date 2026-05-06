@@ -426,10 +426,11 @@ a {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .stat-tile {
+  position: relative;
   padding: 22px 26px;
   display: flex;
   align-items: center;
@@ -457,6 +458,10 @@ a {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.stat-tile__body {
+  min-width: 0;
 }
 
 .tone-green {
@@ -494,6 +499,58 @@ a {
   margin: 0;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.stat-tile__tooltip {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .stat-tile {
+    cursor: help;
+  }
+
+  .stat-tile__tooltip {
+    display: block;
+    position: absolute;
+    left: 26px;
+    bottom: calc(100% + 12px);
+    width: min(280px, calc(100vw - 48px));
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--line-strong);
+    background: linear-gradient(180deg, rgba(18, 27, 42, 0.98), rgba(11, 17, 28, 0.98));
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+    color: #dfe8f5;
+    font-size: 0.84rem;
+    line-height: 1.4;
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    transition:
+      opacity 160ms ease,
+      transform 160ms ease;
+    z-index: 20;
+  }
+
+  .stat-tile__tooltip::after {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 100%;
+    width: 12px;
+    height: 12px;
+    background: rgba(11, 17, 28, 0.98);
+    border-right: 1px solid var(--line-strong);
+    border-bottom: 1px solid var(--line-strong);
+    transform: rotate(45deg) translateY(-7px);
+  }
+
+  .stat-tile:hover .stat-tile__tooltip,
+  .stat-tile:focus-within .stat-tile__tooltip {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .products-card {
